@@ -90,83 +90,92 @@ int main(int argc, char **argv)
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
     ORB_SLAM3::System SLAM(argv[1],argv[2],ORB_SLAM3::System::STEREO, true);
 
-    cv::Mat imLeft, imRight;
-    for (seq = 0; seq<num_seq; seq++)
-    {
-
-        // Seq loop
-        double t_resize = 0;
-        double t_rect = 0;
-        double t_track = 0;
-        int num_rect = 0;
-        int proccIm = 0;
-        for(int ni=0; ni<nImages[seq]; ni++, proccIm++)
+    std::thread runThread([&]() {
+        cv::Mat imLeft, imRight;
+        for (seq = 0; seq<num_seq; seq++)
         {
-            // Read left and right images from file
-            imLeft = cv::imread(vstrImageLeft[seq][ni],cv::IMREAD_UNCHANGED); //,cv::IMREAD_UNCHANGED);
-            imRight = cv::imread(vstrImageRight[seq][ni],cv::IMREAD_UNCHANGED); //,cv::IMREAD_UNCHANGED);
 
-            if(imLeft.empty())
+            // Seq loop
+            double t_resize = 0;
+            double t_rect = 0;
+            double t_track = 0;
+            int num_rect = 0;
+            int proccIm = 0;
+            for(int ni=0; ni<nImages[seq]; ni++, proccIm++)
             {
-                cerr << endl << "Failed to load image at: "
-                     << string(vstrImageLeft[seq][ni]) << endl;
-                return 1;
-            }
+                // Read left and right images from file
+                imLeft = cv::imread(vstrImageLeft[seq][ni],cv::IMREAD_UNCHANGED); //,cv::IMREAD_UNCHANGED);
+                imRight = cv::imread(vstrImageRight[seq][ni],cv::IMREAD_UNCHANGED); //,cv::IMREAD_UNCHANGED);
 
-            if(imRight.empty())
-            {
-                cerr << endl << "Failed to load image at: "
-                     << string(vstrImageRight[seq][ni]) << endl;
-                return 1;
-            }
+                if(imLeft.empty())
+                {
+                    cerr << endl << "Failed to load image at: "
+                        << string(vstrImageLeft[seq][ni]) << endl;
+                    return 1;
+                }
 
-            double tframe = vTimestampsCam[seq][ni];
+                if(imRight.empty())
+                {
+                    cerr << endl << "Failed to load image at: "
+                        << string(vstrImageRight[seq][ni]) << endl;
+                    return 1;
+                }
 
-    #ifdef COMPILEDWITHC11
-            std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
-    #else
-            std::chrono::monotonic_clock::time_point t1 = std::chrono::monotonic_clock::now();
+                double tframe = vTimestampsCam[seq][ni];
+
+        #ifdef COMPILEDWITHC11
+                std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
+        #else
+                std::chrono::monotonic_clock::time_point t1 = std::chrono::monotonic_clock::now();
+        #endif
+
+                // Pass the images to the SLAM system
+                SLAM.TrackStereo(imLeft,imRight,tframe, vector<ORB_SLAM3::IMU::Point>(), vstrImageLeft[seq][ni]);
+
+        #ifdef COMPILEDWITHC11
+                std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
+        #else
+                std::chrono::monotonic_clock::time_point t2 = std::chrono::monotonic_clock::now();
+        #endif
+
+    #ifdef REGISTER_TIMES
+                t_track = t_resize + t_rect + std::chrono::duration_cast<std::chrono::duration<double,std::milli> >(t2 - t1).count();
+                SLAM.InsertTrackTime(t_track);
     #endif
 
-            // Pass the images to the SLAM system
-            SLAM.TrackStereo(imLeft,imRight,tframe, vector<ORB_SLAM3::IMU::Point>(), vstrImageLeft[seq][ni]);
+                double ttrack= std::chrono::duration_cast<std::chrono::duration<double> >(t2 - t1).count();
 
-    #ifdef COMPILEDWITHC11
-            std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
-    #else
-            std::chrono::monotonic_clock::time_point t2 = std::chrono::monotonic_clock::now();
-    #endif
+                vTimesTrack[ni]=ttrack;
 
-#ifdef REGISTER_TIMES
-            t_track = t_resize + t_rect + std::chrono::duration_cast<std::chrono::duration<double,std::milli> >(t2 - t1).count();
-            SLAM.InsertTrackTime(t_track);
-#endif
+                // Wait to load the next frame
+                double T=0;
+                if(ni<nImages[seq]-1)
+                    T = vTimestampsCam[seq][ni+1]-tframe;
+                else if(ni>0)
+                    T = tframe-vTimestampsCam[seq][ni-1];
 
-            double ttrack= std::chrono::duration_cast<std::chrono::duration<double> >(t2 - t1).count();
+                if(ttrack<T)
+                    usleep((T-ttrack)*1e6); // 1e6
+            }
 
-            vTimesTrack[ni]=ttrack;
+            if(seq < num_seq - 1)
+            {
+                cout << "Changing the dataset" << endl;
 
-            // Wait to load the next frame
-            double T=0;
-            if(ni<nImages[seq]-1)
-                T = vTimestampsCam[seq][ni+1]-tframe;
-            else if(ni>0)
-                T = tframe-vTimestampsCam[seq][ni-1];
+                SLAM.ChangeDataset();
+            }
 
-            if(ttrack<T)
-                usleep((T-ttrack)*1e6); // 1e6
         }
+        
+        // Stop all threads
+        SLAM.Shutdown();
+    });
 
-        if(seq < num_seq - 1)
-        {
-            cout << "Changing the dataset" << endl;
+    // Run the viewer
+    SLAM.RunViewer();
+    cout << "Viewer started, waiting for thread." << endl;
 
-            SLAM.ChangeDataset();
-        }
-
-    }
-    // Stop all threads
-    SLAM.Shutdown();
+    runThread.join();
 
     // Save camera trajectory
     if (bFileName)

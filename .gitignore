@@ -55,6 +55,8 @@ Examples/Tests/sophus_test
 Examples/ROS/ORB_SLAM3/CMakeLists.txt.user
 Examples/ROS/ORB_SLAM3/build/
 
+Datasets/
+
 KeyFrameTrajectory.txt
 CameraTrajectory.txt
 kf_*.txt
@@ -87,6 +89,7 @@ Table_TUMVI_rooms/
 *.osa
 .idea/
 .vscode/
+.DS_Store
 my_settings.txt
 
 borrar/*
