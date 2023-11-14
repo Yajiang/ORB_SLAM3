@@ -115,14 +115,18 @@ include/Settings.h)
 
 add_subdirectory(Thirdparty/g2o)
 
+find_package(Boost REQUIRED COMPONENTS system filesystem serialization)
+find_package(OpenSSL REQUIRED)
+
+
 target_link_libraries(${PROJECT_NAME}
 ${OpenCV_LIBS}
 ${EIGEN3_LIBS}
 ${Pangolin_LIBRARIES}
 ${PROJECT_SOURCE_DIR}/Thirdparty/DBoW2/lib/libDBoW2${CMAKE_SHARED_LIBRARY_SUFFIX}
 ${PROJECT_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o${CMAKE_SHARED_LIBRARY_SUFFIX}
-/usr/local/Cellar/boost/1.82.0_1/lib/libboost_serialization.dylib
-/usr/local/Cellar/openssl@3/3.1.2/lib/libcrypto.dylib
+${Boost_LIBRARIES}
+${OPENSSL_CRYPTO_LIBRARY}
 )
 
 # If RealSense SDK is found the library is added and its examples compiled
@@ -200,6 +204,10 @@ target_link_libraries(mono_kitti ${PROJECT_NAME})
 add_executable(mono_euroc
         Examples/Monocular/mono_euroc.cc)
 target_link_libraries(mono_euroc ${PROJECT_NAME})
+
+add_executable(mono_rokid
+        Examples/Monocular/mono_rokid.cc)
+target_link_libraries(mono_rokid ${PROJECT_NAME})
 
 add_executable(mono_tum_vi
         Examples/Monocular/mono_tum_vi.cc)
