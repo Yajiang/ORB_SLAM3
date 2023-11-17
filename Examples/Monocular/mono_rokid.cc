@@ -59,89 +59,86 @@ int main(int argc, char **argv)
     cout << "Start processing sequence ..." << endl;
     cout << "Images in the sequence: " << nImages << endl << endl;
 
+    cv::Mat im;
+    // Main loop
+    double t_resize = 0.f;
+    double t_track = 0.f;
 
-    std::thread runThread([&]() {
-        for (int ni = 0; ni < nImages; ni++)
+    for (int ni = 0; ni < nImages; ni++)
+    {
+        // Read image from file
+        im = cv::imread(vstrImageFilenames[ni], cv::IMREAD_UNCHANGED); //,cv::IMREAD_UNCHANGED);
+        double tframe = vTimestamps[ni];
+
+        if (im.empty())
         {
-            cv::Mat im;
-            // Main loop
-            double t_resize = 0.f;
-            double t_track = 0.f;
-            // Read image from file
-            im = cv::imread(vstrImageFilenames[ni], cv::IMREAD_UNCHANGED); //,cv::IMREAD_UNCHANGED);
-            double tframe = vTimestamps[ni];
-
-            if (im.empty())
-            {
-                cerr << endl
-                     << "Failed to load image at: " << vstrImageFilenames[ni] << endl;
-                return 1;
-            }
-
-            if (imageScale != 1.f)
-            {
-#ifdef REGISTER_TIMES
-#ifdef COMPILEDWITHC11
-                std::chrono::steady_clock::time_point t_Start_Resize = std::chrono::steady_clock::now();
-#else
-                std::chrono::monotonic_clock::time_point t_Start_Resize = std::chrono::monotonic_clock::now();
-#endif
-#endif
-                int width = im.cols * imageScale;
-                int height = im.rows * imageScale;
-                cv::resize(im, im, cv::Size(width, height));
-#ifdef REGISTER_TIMES
-#ifdef COMPILEDWITHC11
-                std::chrono::steady_clock::time_point t_End_Resize = std::chrono::steady_clock::now();
-#else
-                std::chrono::monotonic_clock::time_point t_End_Resize = std::chrono::monotonic_clock::now();
-#endif
-                t_resize = std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(t_End_Resize - t_Start_Resize).count();
-                SLAM.InsertResizeTime(t_resize);
-#endif
-            }
-
-#ifdef COMPILEDWITHC11
-            std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
-#else
-            std::chrono::monotonic_clock::time_point t1 = std::chrono::monotonic_clock::now();
-#endif
-
-            // Pass the image to the SLAM system
-            SLAM.TrackMonocular(im, tframe, vector<ORB_SLAM3::IMU::Point>(), vstrImageFilenames[ni]);
-
-#ifdef COMPILEDWITHC11
-            std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
-#else
-            std::chrono::monotonic_clock::time_point t2 = std::chrono::monotonic_clock::now();
-#endif
-
-#ifdef REGISTER_TIMES
-            t_track = t_resize + std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(t2 - t1).count();
-            SLAM.InsertTrackTime(t_track);
-#endif
-
-            double ttrack = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1).count();
-
-            vTimesTrack[ni] = ttrack;
-
-            // Wait to load the next frame
-            double T = 0;
-            if (ni < nImages - 1)
-                T = vTimestamps[ni + 1] - tframe;
-            else if (ni > 0)
-                T = tframe - vTimestamps[ni - 1];
-
-            if (ttrack < T)
-                usleep((T - ttrack) * 1e6);
+            cerr << endl
+                 << "Failed to load image at: " << vstrImageFilenames[ni] << endl;
+            return 1;
         }
-        SLAM.Shutdown();
-    });
 
-    SLAM.RunViewer();
-    cout << "Viewer started, waiting for thread." << endl;
+        if (imageScale != 1.f)
+        {
+#ifdef REGISTER_TIMES
+#ifdef COMPILEDWITHC11
+            std::chrono::steady_clock::time_point t_Start_Resize = std::chrono::steady_clock::now();
+#else
+            std::chrono::monotonic_clock::time_point t_Start_Resize = std::chrono::monotonic_clock::now();
+#endif
+#endif
+            int width = im.cols * imageScale;
+            int height = im.rows * imageScale;
+            cv::resize(im, im, cv::Size(width, height));
+#ifdef REGISTER_TIMES
+#ifdef COMPILEDWITHC11
+            std::chrono::steady_clock::time_point t_End_Resize = std::chrono::steady_clock::now();
+#else
+            std::chrono::monotonic_clock::time_point t_End_Resize = std::chrono::monotonic_clock::now();
+#endif
+            t_resize = std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(t_End_Resize - t_Start_Resize).count();
+            SLAM.InsertResizeTime(t_resize);
+#endif
+        }
+
+#ifdef COMPILEDWITHC11
+        std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
+#else
+        std::chrono::monotonic_clock::time_point t1 = std::chrono::monotonic_clock::now();
+#endif
+
+        // Pass the image to the SLAM system
+        SLAM.TrackMonocular(im, tframe, vector<ORB_SLAM3::IMU::Point>(), vstrImageFilenames[ni]);
+
+#ifdef COMPILEDWITHC11
+        std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
+#else
+        std::chrono::monotonic_clock::time_point t2 = std::chrono::monotonic_clock::now();
+#endif
+
+#ifdef REGISTER_TIMES
+        t_track = t_resize + std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(t2 - t1).count();
+        SLAM.InsertTrackTime(t_track);
+#endif
+
+        double ttrack = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1).count();
+
+        vTimesTrack[ni] = ttrack;
+
+        // Wait to load the next frame
+        double T = 0;
+        if (ni < nImages - 1)
+            T = vTimestamps[ni + 1] - tframe;
+        else if (ni > 0)
+            T = tframe - vTimestamps[ni - 1];
+
+        if (ttrack < T)
+            usleep((T - ttrack) * 1e6);
+    }
+    SLAM.Shutdown();
+
+    // SLAM.RunViewer();
     // Stop all threads
-    runThread.join();
+    // runThread.join();
 
     // Tracking time statistics
     sort(vTimesTrack.begin(),vTimesTrack.end());
@@ -162,7 +159,7 @@ int main(int argc, char **argv)
 
 void LoadImages(const string &folderPath, vector<string> &vstrImageFilenames, vector<double> &vTimestamps)
 {
-    namespace fs = std::__fs::filesystem;
+    namespace fs = std::filesystem;
     try
     {
         std::vector<std::pair<double, std::string>> vTimestampFilenames;
