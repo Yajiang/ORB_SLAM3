@@ -81,7 +81,7 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
         mStrLoadAtlasFromFile = settings_->atlasLoadFile();
         mStrSaveAtlasToFile = settings_->atlasSaveFile();
 
-        cout << (*settings_) << endl;
+        // cout << (*settings_) << endl;
     }
     else{
         settings_ = nullptr;
@@ -243,6 +243,7 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
 
 Sophus::SE3f System::TrackStereo(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timestamp, const vector<IMU::Point>& vImuMeas, string filename)
 {
+    cv::namedWindow("debug");
     if(mSensor!=STEREO && mSensor!=IMU_STEREO)
     {
         cerr << "ERROR: you called TrackStereo but input sensor was not set to Stereo nor Stereo-Inertial." << endl;
@@ -267,6 +268,10 @@ Sophus::SE3f System::TrackStereo(const cv::Mat &imLeft, const cv::Mat &imRight, 
         imLeftToFeed = imLeft.clone();
         imRightToFeed = imRight.clone();
     }
+    cv::Mat concat;
+    cv::hconcat(imLeftToFeed, imRightToFeed, concat);
+    cv::imshow("debug", concat);
+    cv::waitKey(1);
 
     // Check mode change
     {

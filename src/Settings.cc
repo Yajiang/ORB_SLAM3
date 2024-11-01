@@ -339,7 +339,8 @@ namespace ORB_SLAM3 {
             bf_ = b_ * calibration1_->getParameter(0);
         }
         else{
-            cv::Mat cvTlr = readParameter<cv::Mat>(fSettings,"Stereo.T_c1_c2",found);
+            cv::Mat cvTrl = readParameter<cv::Mat>(fSettings,"Stereo.T_c1_c2",found);
+            cv::Mat cvTlr = cvTrl.inv();
             Tlr_ = Converter::toSophus(cvTlr);
 
             //TODO: also search for Trl and invert if necessary
