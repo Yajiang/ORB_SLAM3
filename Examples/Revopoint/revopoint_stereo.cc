@@ -55,8 +55,9 @@ uint64_t ExtractTimestamp(const std::string &filename) {
   return std::numeric_limits<uint64_t>::max();
 }
 
-void LoadLeftImages(const string &dataRootFolder, std::vector<string> &vstrImages,
-                std::vector<double> &vTimeStamps) {
+void LoadLeftImages(const string &dataRootFolder,
+                    std::vector<string> &vstrImages,
+                    std::vector<double> &vTimeStamps) {
   vTimeStamps.reserve(5000);
   vstrImages.reserve(5000);
   auto rgbDepthFolder = stlplus::folder_down(dataRootFolder, "rgb_depth");
@@ -72,8 +73,9 @@ void LoadLeftImages(const string &dataRootFolder, std::vector<string> &vstrImage
   }
 }
 
-void LoadRightImages(const string &dataRootFolder, std::vector<string> &vstrImages,
-                std::vector<double> &vTimeStamps) {
+void LoadRightImages(const string &dataRootFolder,
+                     std::vector<string> &vstrImages,
+                     std::vector<double> &vTimeStamps) {
   vTimeStamps.reserve(5000);
   vstrImages.reserve(5000);
   auto rgbDepthFolder = stlplus::folder_down(dataRootFolder, "rgb_depth");
@@ -164,18 +166,19 @@ void sortPath(std::vector<std::string> &vStrPath,
   for (size_t i = 0; i < indices.size(); ++i) {
     indices[i] = i;
   }
-  std::sort(indices.begin(), indices.end(),
-            [&vTimestamp](int i, int j) { return vTimestamp[i] < vTimestamp[j]; });
+  std::sort(indices.begin(), indices.end(), [&vTimestamp](int i, int j) {
+    return vTimestamp[i] < vTimestamp[j];
+  });
   std::vector<string> sortedStrPath(vStrPath.size());
   for (size_t i = 0; i < indices.size(); ++i) {
     sortedStrPath[i] = vStrPath[indices[i]];
   }
-  std::sort(vTimestamp.begin(),vTimestamp.end());
+  std::sort(vTimestamp.begin(), vTimestamp.end());
   vStrPath = sortedStrPath;
 }
 
 int main(int argc, char **argv) {
-  if (argc != 3) {
+  if (argc != 4) {
     cerr << endl << "Usage: ./revopoint_pop3.yaml path_to_vocabulary " << endl;
     return 1;
   }
@@ -188,15 +191,14 @@ int main(int argc, char **argv) {
 
   sigaction(SIGINT, &sigIntHandler, NULL);
   b_continue_session = true;
-  // ORB_SLAM3::System SLAM(argv[1], argv[2], ORB_SLAM3::System::IMU_STEREO, true,
+  // ORB_SLAM3::System SLAM(argv[1], argv[2], ORB_SLAM3::System::IMU_STEREO,
+  // true,
   //                        0);
-  ORB_SLAM3::System SLAM(argv[1], argv[2], ORB_SLAM3::System::STEREO, true,
-                         0);
+  ORB_SLAM3::System SLAM(argv[1], argv[2], ORB_SLAM3::System::STEREO, true, 0);
 
   double offset = 0; // ms
 
-  std::string dataRootDir =
-      "/home/yajianghuang/Revopoint/data/orb_slam3_data/data_2";
+  std::string dataRootDir = argv[3];
   std::vector<std::string> vStrLeftImages;
   std::vector<std::string> vStrRightImages;
   std::vector<double> vLeftTimestamps;
@@ -217,7 +219,7 @@ int main(int argc, char **argv) {
   while (vImuTimeStamps[firstImu] <= vLeftTimestamps[0])
     firstImu++;
   firstImu--; // first imu measurement to be considered
-  firstImu +=100;
+  firstImu += 100;
 
   cv::Mat leftImg;
   cv::Mat rightImg;
@@ -230,7 +232,8 @@ int main(int argc, char **argv) {
       double timestamp = vLeftTimestamps[id];
 
       if (leftImg.empty()) {
-        cerr << endl << "Failed to load image at: " << vStrLeftImages[id] << endl;
+        cerr << endl
+             << "Failed to load image at: " << vStrLeftImages[id] << endl;
         return 1;
       }
       if (rightImg.empty()) {

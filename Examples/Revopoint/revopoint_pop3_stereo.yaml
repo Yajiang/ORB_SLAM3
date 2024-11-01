@@ -43,7 +43,7 @@ Camera.fps: 15
 
 # Color order of the images (0: BGR, 1: RGB. It is ignored if images are grayscale)
 Camera.RGB: 1
-Stereo.ThDepth: 0.8
+Stereo.ThDepth: 0.5
 Stereo.T_c1_c2: !!opencv-matrix
     rows: 4
     cols: 4

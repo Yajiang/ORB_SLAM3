@@ -9,10 +9,12 @@
             "request": "launch",
             "type": "cppdbg",
             "program": "${workspaceFolder}/build/revopoint",
+            // "program": "${workspaceFolder}/build_release/revopoint",
             "args": [
-                "/home/yajianghuang/Revopoint/projects/ORB_SLAM3/Vocabulary/ORBvoc.txt",
+                "/home/yjhuang/Revopoint/projects/ORB_SLAM3/Vocabulary/ORBvoc.txt",
                 // "/home/yajianghuang/Revopoint/projects/ORB_SLAM3/Examples/Revopoint/revopoint_pop3_stereo_rectified.yaml"
-                "/home/yajianghuang/Revopoint/projects/ORB_SLAM3/Examples/Revopoint/revopoint_pop3_stereo.yaml"
+                "/home/yjhuang/Revopoint/projects/ORB_SLAM3/Examples/Revopoint/revopoint_pop3_stereo.yaml",
+                "/home/yjhuang/Revopoint/data/orb_slam3_data/data_2"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

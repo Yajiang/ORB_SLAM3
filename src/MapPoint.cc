@@ -134,13 +134,13 @@ Eigen::Vector3f MapPoint::GetNormal() {
 
 KeyFrame* MapPoint::GetReferenceKeyFrame()
 {
-    unique_lock<mutex> lock(mMutexFeatures);
+    unique_lock<std::recursive_mutex> lock(mMutexFeatures);
     return mpRefKF;
 }
 
 void MapPoint::AddObservation(KeyFrame* pKF, int idx)
 {
-    unique_lock<mutex> lock(mMutexFeatures);
+    unique_lock<std::recursive_mutex> lock(mMutexFeatures);
     tuple<int,int> indexes;
 
     if(mObservations.count(pKF)){
@@ -169,7 +169,7 @@ void MapPoint::EraseObservation(KeyFrame* pKF)
 {
     bool bBad=false;
     {
-        unique_lock<mutex> lock(mMutexFeatures);
+        unique_lock<std::recursive_mutex> lock(mMutexFeatures);
         if(mObservations.count(pKF))
         {
             tuple<int,int> indexes = mObservations[pKF];
@@ -203,13 +203,14 @@ void MapPoint::EraseObservation(KeyFrame* pKF)
 
 std::map<KeyFrame*, std::tuple<int,int>>  MapPoint::GetObservations()
 {
-    unique_lock<mutex> lock(mMutexFeatures);
+    unique_lock<std::recursive_mutex> lock(mMutexFeatures);
     return mObservations;
 }
 
 int MapPoint::Observations()
 {
-    unique_lock<mutex> lock(mMutexFeatures);
+    unique_lock<std::recursive_mutex> lock(mMutexFeatures);
+    // std::lock_guard<std::recursive_mutex> lock(mMutexFeatures);
     return nObs;
 }
 
@@ -217,7 +218,7 @@ void MapPoint::SetBadFlag()
 {
     map<KeyFrame*, tuple<int,int>> obs;
     {
-        unique_lock<mutex> lock1(mMutexFeatures);
+        unique_lock<std::recursive_mutex> lock1(mMutexFeatures);
         unique_lock<mutex> lock2(mMutexPos);
         mbBad=true;
         obs = mObservations;
@@ -240,7 +241,7 @@ void MapPoint::SetBadFlag()
 
 MapPoint* MapPoint::GetReplaced()
 {
-    unique_lock<mutex> lock1(mMutexFeatures);
+    unique_lock<std::recursive_mutex> lock1(mMutexFeatures);
     unique_lock<mutex> lock2(mMutexPos);
     return mpReplaced;
 }
@@ -253,7 +254,7 @@ void MapPoint::Replace(MapPoint* pMP)
     int nvisible, nfound;
     map<KeyFrame*,tuple<int,int>> obs;
     {
-        unique_lock<mutex> lock1(mMutexFeatures);
+        unique_lock<std::recursive_mutex> lock1(mMutexFeatures);
         unique_lock<mutex> lock2(mMutexPos);
         obs=mObservations;
         mObservations.clear();
@@ -301,7 +302,7 @@ void MapPoint::Replace(MapPoint* pMP)
 
 bool MapPoint::isBad()
 {
-    unique_lock<mutex> lock1(mMutexFeatures,std::defer_lock);
+    unique_lock<std::recursive_mutex> lock1(mMutexFeatures,std::defer_lock);
     unique_lock<mutex> lock2(mMutexPos,std::defer_lock);
     lock(lock1, lock2);
 
@@ -310,19 +311,19 @@ bool MapPoint::isBad()
 
 void MapPoint::IncreaseVisible(int n)
 {
-    unique_lock<mutex> lock(mMutexFeatures);
+    unique_lock<std::recursive_mutex> lock(mMutexFeatures);
     mnVisible+=n;
 }
 
 void MapPoint::IncreaseFound(int n)
 {
-    unique_lock<mutex> lock(mMutexFeatures);
+    unique_lock<std::recursive_mutex> lock(mMutexFeatures);
     mnFound+=n;
 }
 
 float MapPoint::GetFoundRatio()
 {
-    unique_lock<mutex> lock(mMutexFeatures);
+    unique_lock<std::recursive_mutex> lock(mMutexFeatures);
     return static_cast<float>(mnFound)/mnVisible;
 }
 
@@ -334,7 +335,7 @@ void MapPoint::ComputeDistinctiveDescriptors()
     map<KeyFrame*,tuple<int,int>> observations;
 
     {
-        unique_lock<mutex> lock1(mMutexFeatures);
+        unique_lock<std::recursive_mutex> lock1(mMutexFeatures);
         if(mbBad)
             return;
         observations=mObservations;
@@ -397,20 +398,20 @@ void MapPoint::ComputeDistinctiveDescriptors()
     }
 
     {
-        unique_lock<mutex> lock(mMutexFeatures);
+        unique_lock<std::recursive_mutex> lock(mMutexFeatures);
         mDescriptor = vDescriptors[BestIdx].clone();
     }
 }
 
 cv::Mat MapPoint::GetDescriptor()
 {
-    unique_lock<mutex> lock(mMutexFeatures);
+    unique_lock<std::recursive_mutex> lock(mMutexFeatures);
     return mDescriptor.clone();
 }
 
 tuple<int,int> MapPoint::GetIndexInKeyFrame(KeyFrame *pKF)
 {
-    unique_lock<mutex> lock(mMutexFeatures);
+    unique_lock<std::recursive_mutex> lock(mMutexFeatures);
     if(mObservations.count(pKF))
         return mObservations[pKF];
     else
@@ -419,7 +420,7 @@ tuple<int,int> MapPoint::GetIndexInKeyFrame(KeyFrame *pKF)
 
 bool MapPoint::IsInKeyFrame(KeyFrame *pKF)
 {
-    unique_lock<mutex> lock(mMutexFeatures);
+    unique_lock<std::recursive_mutex> lock(mMutexFeatures);
     return (mObservations.count(pKF));
 }
 
@@ -429,7 +430,7 @@ void MapPoint::UpdateNormalAndDepth()
     KeyFrame* pRefKF;
     Eigen::Vector3f Pos;
     {
-        unique_lock<mutex> lock1(mMutexFeatures);
+        unique_lock<std::recursive_mutex> lock1(mMutexFeatures);
         unique_lock<mutex> lock2(mMutexPos);
         if(mbBad)
             return;

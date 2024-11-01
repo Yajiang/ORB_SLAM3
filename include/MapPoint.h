@@ -246,7 +246,7 @@ protected:
 
      // Mutex
      std::mutex mMutexPos;
-     std::mutex mMutexFeatures;
+     std::recursive_mutex  mMutexFeatures;
      std::mutex mMutexMap;
 
 };
