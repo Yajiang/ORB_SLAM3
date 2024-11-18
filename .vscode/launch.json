@@ -15,7 +15,7 @@
             //     "/home/yajiang/Revopoint/data/MH_01_easy",
             //     "/home/yajiang/Revopoint/projects/ORB_SLAM3/Examples/Stereo/EuRoC_TimeStamps/MH01.txt"
             // ],
-            "program": "${workspaceFolder}/build/revopoint",
+            "program": "${workspaceFolder}/build_release/revopoint",
             "args": [
                 "/home/yajiang/Revopoint/projects/ORB_SLAM3/Vocabulary/ORBvoc.txt",
                 "/home/yajiang/Revopoint/projects/ORB_SLAM3/Examples/Revopoint/revopoint_stereo_fisheye.yaml",

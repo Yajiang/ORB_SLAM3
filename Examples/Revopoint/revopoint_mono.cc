@@ -246,7 +246,8 @@ int main(int argc, char **argv) {
       float imageScale = SLAM.GetImageScale();
       // Clear IMU vectors
       // SLAM.TrackStereo(leftImg, rightImg, timestamp);
-      SLAM.TrackMonocular(leftImg, timestamp);
+      // SLAM.TrackMonocular(leftImg, timestamp);
+      SLAM.TrackMonocular(rightImg, timestamp);
     }
   }
   cout << "System shutdown!\n";
