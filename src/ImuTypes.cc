@@ -16,6 +16,11 @@
 * If not, see <http://www.gnu.org/licenses/>.
 */
 
+/******************************************************************************
+* Modified by:   Yifu Wang, Yonhon Ng                                                    *
+* Contact:  1fwang927@gmail.com                                               *
+******************************************************************************/
+
 #include "ImuTypes.h"
 #include "Converter.h"
 
@@ -183,7 +188,8 @@ void Preintegrated::IntegrateNewMeasurement(const Eigen::Vector3f &acceleration,
     // Rotation is the last to be updated.
 
     //Matrices to compute covariance
-    Eigen::Matrix<float,9,9> A;
+    // Eigen::Matrix<float,9,9> A;
+    Eigen::Matrix<float,9,15> A;
     A.setIdentity();
     Eigen::Matrix<float,9,6> B;
     B.setZero();
@@ -196,24 +202,40 @@ void Preintegrated::IntegrateNewMeasurement(const Eigen::Vector3f &acceleration,
     avgW = (dT*avgW + accW*dt)/(dT+dt);
 
     // Update delta position dP and velocity dV (rely on no-updated delta rotation)
-    dP = dP + dV*dt + 0.5f*dR*acc*dt*dt;
-    dV = dV + dR*acc*dt;
+    // Improved IMU Pre-integration
+    Eigen::Matrix<float,3,3> J1, J2;
+    float theta = accW.norm();
+    float theta2 = theta*theta;
+    float theta3 = theta2*theta;
+    float theta4 = theta3*theta;
+    Eigen::Matrix<float,3,3> WaccW = Sophus::SO3f::hat(accW);
+    Eigen::Matrix<float,3,3> WaccW2 = WaccW*WaccW;
+
+    J1 = dt*Eigen::Matrix3f::Identity() + (1.0f - cos(dt*theta))/(theta2)*WaccW + (dt*theta - sin(dt*theta))/(theta3)*WaccW2;
+    J2 = 0.5f*dt*dt*Eigen::Matrix3f::Identity() + (dt*theta - sin(dt*theta))/(theta3)*WaccW + (0.5f*dt*dt*theta2 + cos(dt*theta) - 1)/(theta4)*WaccW2;
+    dP = dP + dV*dt + dR*J2*acc; // 0.5f*dR*acc*dt*dt;
+    dV = dV + dR*J1*acc; // dR*acc*dt;
 
     // Compute velocity and position parts of matrices A and B (rely on non-updated delta rotation)
     Eigen::Matrix<float,3,3> Wacc = Sophus::SO3f::hat(acc);
 
-    A.block<3,3>(3,0) = -dR*dt*Wacc;
-    A.block<3,3>(6,0) = -0.5f*dR*dt*dt*Wacc;
+    A.block<9,9>(0,0).setIdentity(); // fix
+    A.block<9,6>(0,9).setZero(); // fix
+    A.block<3,3>(3,0) = -dR*Sophus::SO3f::hat(J1*acc); // -dR*dt*Wacc;
+    A.block<3,3>(6,0) = -dR*Sophus::SO3f::hat(J2*acc); // -0.5f*dR*dt*dt*Wacc;
     A.block<3,3>(6,3) = Eigen::DiagonalMatrix<float,3>(dt, dt, dt);
-    B.block<3,3>(3,3) = dR*dt;
-    B.block<3,3>(6,3) = 0.5f*dR*dt*dt;
+    A.block<3,3>(0,9) = Eigen::DiagonalMatrix<float,3>(-dt, -dt, -dt); // fix
+    A.block<3,3>(3,12) = -dR*J1; // -dR*dt; // fix
+    A.block<3,3>(6,12) = -dR*J2; // -0.5f*dR*dt*dt; // fix
+    B.block<3,3>(3,3) = dR*J1; // dR*dt;
+    B.block<3,3>(6,3) = dR*J2; // 0.5f*dR*dt*dt;
 
 
     // Update position and velocity jacobians wrt bias correction
-    JPa = JPa + JVa*dt -0.5f*dR*dt*dt;
-    JPg = JPg + JVg*dt -0.5f*dR*dt*dt*Wacc*JRg;
-    JVa = JVa - dR*dt;
-    JVg = JVg - dR*dt*Wacc*JRg;
+    JPa = JPa + JVa*dt -dR*J2; // -0.5f*dR*dt*dt;
+    JPg = JPg + JVg*dt -dR*J2*Wacc*JRg; // -0.5f*dR*dt*dt*Wacc*JRg;
+    JVa = JVa - dR*J1; // -dR*dt;
+    JVg = JVg - dR*J1*Wacc*JRg; // -dR*dt*Wacc*JRg;
 
     // Update delta rotation
     IntegratedRotation dRi(angVel,b,dt);
@@ -224,8 +246,8 @@ void Preintegrated::IntegrateNewMeasurement(const Eigen::Vector3f &acceleration,
     B.block<3,3>(0,0) = dRi.rightJ*dt;
 
     // Update covariance
-    C.block<9,9>(0,0) = A * C.block<9,9>(0,0) * A.transpose() + B*Nga*B.transpose();
-    C.block<6,6>(9,9) += NgaWalk;
+    C.block<9,9>(0,0) = A * C * A.transpose() + B*Nga*B.transpose();
+    C.block<6,6>(9,9) += dt*dt*NgaWalk;
 
     // Update rotation jacobian wrt bias correction
     JRg = dRi.deltaR.transpose()*JRg - dRi.rightJ*dt;

@@ -16,6 +16,10 @@
 * If not, see <http://www.gnu.org/licenses/>.
 */
 
+/******************************************************************************
+* Modified by:   Yifu Wang                                                    *
+* Contact:  1fwang927@gmail.com                                               *
+******************************************************************************/
 
 #include "Viewer.h"
 #include <pangolin/pangolin.h>
@@ -164,7 +168,7 @@ void Viewer::Run()
     mbFinished = false;
     mbStopped = false;
 
-    pangolin::CreateWindowAndBind("ORB-SLAM3: Map Viewer",1024,768);
+    pangolin::CreateWindowAndBind("ORB-SLAM3-Multi: Map Viewer",1024,768);
 
     // 3D Mouse handler requires depth testing to be enabled
     glEnable(GL_DEPTH_TEST);
@@ -180,14 +184,18 @@ void Viewer::Run()
     // pangolin::Var<bool> menuSideView("menu.Side View",false,false);
     pangolin::Var<bool> menuShowPoints("menu.Show Points",true,true);
     pangolin::Var<bool> menuShowKeyFrames("menu.Show KeyFrames",true,true);
-    pangolin::Var<bool> menuShowGraph("menu.Show Graph",false,true);
+    pangolin::Var<bool> menuShowGraph("menu.Show Graph",true,true);
     pangolin::Var<bool> menuShowInertialGraph("menu.Show Inertial Graph",true,true);
     pangolin::Var<bool> menuLocalizationMode("menu.Localization Mode",false,true);
+    pangolin::Var<bool> menuLoopClosureMode("menu.LoopClosure Mode",true,true);
     pangolin::Var<bool> menuReset("menu.Reset",false,false);
     pangolin::Var<bool> menuStop("menu.Stop",false,false);
     pangolin::Var<bool> menuStepByStep("menu.Step By Step",false,true);  // false, true
     pangolin::Var<bool> menuStep("menu.Step",false,false);
-
+    pangolin::Var<bool> menuEnableLeftCam("menu.Enable Left Cam",true,true);
+    pangolin::Var<bool> menuEnableRightCam("menu.Enable Right Cam",true,true);
+    pangolin::Var<bool> menuEnableSideLeftCam("menu.Enable SideLeft Cam",true,true);
+    pangolin::Var<bool> menuEnableSiderightCam("menu.Enable Sideright Cam",true,true);
     pangolin::Var<bool> menuShowOptLba("menu.Show LBA opt", false, true);
     // Define Camera Render Object (for view / scene browsing)
     pangolin::OpenGlRenderState s_cam(
@@ -204,7 +212,7 @@ void Viewer::Run()
     Twc.SetIdentity();
     pangolin::OpenGlMatrix Ow; // Oriented with g in the z axis
     Ow.SetIdentity();
-    cv::namedWindow("ORB-SLAM3: Current Frame");
+    cv::namedWindow("ORB-SLAM3-Multi: Current Frame");
 
     bool bFollow = true;
     bool bLocalizationMode = false;
@@ -288,6 +296,11 @@ void Viewer::Run()
             bLocalizationMode = false;
         }
 
+        if(menuLoopClosureMode)
+            mpSystem->ActivateLC();
+        else
+            mpSystem->DeActivateLC();
+
         if(menuStepByStep && !bStepByStep)
         {
             //cout << "Viewer: step by step" << endl;
@@ -315,14 +328,44 @@ void Viewer::Run()
         if(menuShowPoints)
             mpMapDrawer->DrawMapPoints();
 
+        if(menuEnableLeftCam)
+            mpTracker->mbleft = true;
+        else
+            mpTracker->mbleft = false;
+
+        if(menuEnableRightCam)
+            mpTracker->mbright = true;
+        else
+            mpTracker->mbright = false;
+
+        if(menuEnableSideLeftCam)
+            mpTracker->mbsideleft = true;
+        else
+            mpTracker->mbsideleft = false;
+
+        if(menuEnableSiderightCam)
+            mpTracker->mbsideright = true;
+        else
+            mpTracker->mbsideright = false;
+
         pangolin::FinishFrame();
 
         cv::Mat toShow;
         cv::Mat im = mpFrameDrawer->DrawFrame(trackedImageScale);
 
-        if(both){
+        if(mpTracker->mSensor == mpSystem->STEREO || mpTracker->mSensor == mpSystem->IMU_STEREO || mpTracker->mSensor == mpSystem->IMU_RGBD){
             cv::Mat imRight = mpFrameDrawer->DrawRightFrame(trackedImageScale);
             cv::hconcat(im,imRight,toShow);
+        }
+        else if(mpTracker->mSensor == mpSystem->IMU_MULTI)
+        {
+            cv::Mat frontImgs, sideImgs;
+            cv::Mat imRight = mpFrameDrawer->DrawRightFrame(trackedImageScale);
+            cv::Mat imSideLeft = mpFrameDrawer->DrawSideLeftFrame(trackedImageScale);
+            cv::Mat imSideRight = mpFrameDrawer->DrawSideRightFrame(trackedImageScale);
+            cv::hconcat(im,imRight,frontImgs);
+            cv::hconcat(imSideLeft,imSideRight,sideImgs);
+            cv::vconcat(frontImgs,sideImgs,toShow);
         }
         else{
             toShow = im;
@@ -335,7 +378,7 @@ void Viewer::Run()
             cv::resize(toShow, toShow, cv::Size(width, height));
         }
 
-        cv::imshow("ORB-SLAM3: Current Frame",toShow);
+        cv::imshow("ORB-SLAM3-Multi: Current Frame",toShow);
         cv::waitKey(mT);
 
         if(menuReset)

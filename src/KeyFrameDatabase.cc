@@ -24,6 +24,11 @@
 
 #include<mutex>
 
+/******************************************************************************
+* Modified by:   Yifu Wang                                                    *
+* Contact:  1fwang927@gmail.com                                               *
+******************************************************************************/
+
 using namespace std;
 
 namespace ORB_SLAM3
@@ -645,7 +650,7 @@ void KeyFrameDatabase::DetectNBestCandidates(KeyFrame *pKF, vector<KeyFrame*> &v
             maxCommonWords=(*lit)->mnPlaceRecognitionWords;
     }
 
-    int minCommonWords = maxCommonWords*0.8f;
+    int minCommonWords = maxCommonWords*0.2f;
 
     list<pair<float,KeyFrame*> > lScoreAndMatch;
 
@@ -709,8 +714,11 @@ void KeyFrameDatabase::DetectNBestCandidates(KeyFrame *pKF, vector<KeyFrame*> &v
     while(i < lAccScoreAndMatch.size() && (vpLoopCand.size() < nNumCandidates || vpMergeCand.size() < nNumCandidates))
     {
         KeyFrame* pKFi = it->second;
-        if(pKFi->isBad())
+        if(pKFi->isBad()){
+            it++;
+            i++;
             continue;
+        }
 
         if(!spAlreadyAddedKF.count(pKFi))
         {

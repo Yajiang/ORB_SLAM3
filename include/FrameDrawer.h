@@ -16,6 +16,10 @@
 * If not, see <http://www.gnu.org/licenses/>.
 */
 
+/******************************************************************************
+* Modified by:   Yifu Wang                                                    *
+* Contact:  1fwang927@gmail.com                                               *
+******************************************************************************/
 
 #ifndef FRAMEDRAWER_H
 #define FRAMEDRAWER_H
@@ -41,7 +45,7 @@ class FrameDrawer
 {
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-    FrameDrawer(Atlas* pAtlas);
+    FrameDrawer(Atlas* pAtlas, const int sensor);
 
     // Update info from the last processed frame.
     void Update(Tracking *pTracker);
@@ -49,8 +53,13 @@ public:
     // Draw last processed frame.
     cv::Mat DrawFrame(float imageScale=1.f);
     cv::Mat DrawRightFrame(float imageScale=1.f);
+    cv::Mat DrawSideLeftFrame(float imageScale=1.f);
+    cv::Mat DrawSideRightFrame(float imageScale=1.f);
 
     bool both;
+
+    // Input sensor
+    int mSensor;
 
 protected:
 
@@ -58,8 +67,10 @@ protected:
 
     // Info of the frame to be drawn
     cv::Mat mIm, mImRight;
+    cv::Mat mImSideLeft, mImSideRight;
     int N;
     vector<cv::KeyPoint> mvCurrentKeys,mvCurrentKeysRight;
+    vector<cv::KeyPoint> mvCurrentKeysSideLeft,mvCurrentKeysSideRight;
     vector<bool> mvbMap, mvbVO;
     bool mbOnlyTracking;
     int mnTracked, mnTrackedVO;

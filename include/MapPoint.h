@@ -16,6 +16,10 @@
 * If not, see <http://www.gnu.org/licenses/>.
 */
 
+/******************************************************************************
+* Modified by:   Yifu Wang                                                    *
+* Contact:  1fwang927@gmail.com                                               *
+******************************************************************************/
 
 #ifndef MAPPOINT_H
 #define MAPPOINT_H
@@ -53,18 +57,31 @@ class MapPoint
         ar & mnFirstFrame;
         ar & nObs;
         // Variables used by the tracking
-        //ar & mTrackProjX;
-        //ar & mTrackProjY;
-        //ar & mTrackDepth;
-        //ar & mTrackDepthR;
-        //ar & mTrackProjXR;
-        //ar & mTrackProjYR;
-        //ar & mbTrackInView;
-        //ar & mbTrackInViewR;
-        //ar & mnTrackScaleLevel;
-        //ar & mnTrackScaleLevelR;
-        //ar & mTrackViewCos;
-        //ar & mTrackViewCosR;
+        ar & mTrackProjX;
+        ar & mTrackProjY;
+        ar & mTrackDepth;
+        ar & mTrackProjXR;
+        ar & mTrackProjYR;
+        ar & mTrackDepthR;
+        ar & mTrackProjXSL;
+        ar & mTrackProjYSL;
+        ar & mTrackDepthSL; // Side Left camera
+        ar & mTrackProjXSR;
+        ar & mTrackProjYSR;
+        ar & mTrackDepthSR; // Side Right camera
+
+        ar & mbTrackInView;
+        ar & mbTrackInViewR;
+        ar & mbTrackInViewSL;
+        ar & mbTrackInViewSR;
+        ar & mnTrackScaleLevel;
+        ar & mnTrackScaleLevelR;
+        ar & mnTrackScaleLevelSL;
+        ar & mnTrackScaleLevelSR;
+        ar & mTrackViewCos;
+        ar & mTrackViewCosR;
+        ar & mTrackViewCosSL;
+        ar & mTrackViewCosSR;
         //ar & mnTrackReferenceForFrame;
         //ar & mnLastFrameSeen;
 
@@ -89,6 +106,8 @@ class MapPoint
         //ar & mObservations;
         ar & mBackupObservationsId1;
         ar & mBackupObservationsId2;
+        ar & mBackupObservationsId3;
+        ar & mBackupObservationsId4;
         serializeMatrix(ar,mDescriptor,version);
         ar & mBackupRefKFId;
         //ar & mnVisible;
@@ -119,13 +138,13 @@ public:
 
     KeyFrame* GetReferenceKeyFrame();
 
-    std::map<KeyFrame*,std::tuple<int,int>> GetObservations();
+    std::map<KeyFrame*,std::tuple<int,int,int,int>> GetObservations();
     int Observations();
 
     void AddObservation(KeyFrame* pKF,int idx);
     void EraseObservation(KeyFrame* pKF);
 
-    std::tuple<int,int> GetIndexInKeyFrame(KeyFrame* pKF);
+    std::tuple<int,int,int,int> GetIndexInKeyFrame(KeyFrame* pKF);
     bool IsInKeyFrame(KeyFrame* pKF);
 
     void SetBadFlag();
@@ -160,6 +179,8 @@ public:
     void PreSave(set<KeyFrame*>& spKF,set<MapPoint*>& spMP);
     void PostLoad(map<long unsigned int, KeyFrame*>& mpKFid, map<long unsigned int, MapPoint*>& mpMPid);
 
+    int GetTrackScaleLevel(const int cameraID) const;
+
 public:
     long unsigned int mnId;
     static long unsigned int nNextId;
@@ -170,13 +191,21 @@ public:
     // Variables used by the tracking
     float mTrackProjX;
     float mTrackProjY;
-    float mTrackDepth;
-    float mTrackDepthR;
+    float mTrackDepth; // Left camera
     float mTrackProjXR;
     float mTrackProjYR;
-    bool mbTrackInView, mbTrackInViewR;
-    int mnTrackScaleLevel, mnTrackScaleLevelR;
-    float mTrackViewCos, mTrackViewCosR;
+    float mTrackDepthR; // Right camera
+    float mTrackProjXSL;
+    float mTrackProjYSL;
+    float mTrackDepthSL; // Side Left camera
+    float mTrackProjXSR;
+    float mTrackProjYSR;
+    float mTrackDepthSR; // Side Right camera
+
+    bool mbTrackInView, mbTrackInViewR, mbTrackInViewSL, mbTrackInViewSR;
+    int mnTrackScaleLevel, mnTrackScaleLevelR, mnTrackScaleLevelSL, mnTrackScaleLevelSR;
+    float mTrackViewCos, mTrackViewCosR, mTrackViewCosSL, mTrackViewCosSR;
+
     long unsigned int mnTrackReferenceForFrame;
     long unsigned int mnLastFrameSeen;
 
@@ -213,10 +242,12 @@ protected:
      Eigen::Vector3f mWorldPos;
 
      // Keyframes observing the point and associated index in keyframe
-     std::map<KeyFrame*,std::tuple<int,int> > mObservations;
+     std::map<KeyFrame*,std::tuple<int,int,int,int> > mObservations;
      // For save relation without pointer, this is necessary for save/load function
      std::map<long unsigned int, int> mBackupObservationsId1;
      std::map<long unsigned int, int> mBackupObservationsId2;
+     std::map<long unsigned int, int> mBackupObservationsId3;
+     std::map<long unsigned int, int> mBackupObservationsId4;
 
      // Mean viewing direction
      Eigen::Vector3f mNormalVector;

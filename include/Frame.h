@@ -16,6 +16,10 @@
 * If not, see <http://www.gnu.org/licenses/>.
 */
 
+/******************************************************************************
+* Modified by:   Yifu Wang                                                    *
+* Contact:  1fwang927@gmail.com                                               *
+******************************************************************************/
 
 #ifndef FRAME_H
 #define FRAME_H
@@ -70,8 +74,9 @@ public:
     // Destructor
     // ~Frame();
 
-    // Extract ORB on the image. 0 for left image and 1 for right image.
-    void ExtractORB(int flag, const cv::Mat &im, const int x0, const int x1);
+    // Extract ORB on the image. 0 for left image and 1 for right image. 2 for sideleft image and 3 for sideright image
+    // bool enableCamera used for switch on / off arbitarty camera
+    void ExtractORB(int flag, bool enableCamera, const cv::Mat &im, const int x0, const int x1);
 
     // Compute Bag of Words representation.
     void ComputeBoW();
@@ -96,6 +101,18 @@ public:
     Eigen::Matrix3f GetRelativePoseTlr_rotation();
     Eigen::Vector3f GetRelativePoseTlr_translation();
 
+    // For obtain relative pose between front-left (main camera) and side-left camera
+    Sophus::SE3f GetRelativePoseTsll();
+    Sophus::SE3f GetRelativePoseTlsl();
+    Eigen::Matrix3f GetRelativePoseTlsl_rotation();
+    Eigen::Vector3f GetRelativePoseTlsl_translation();
+
+    // For obtain relative pose between front-left (main camera) and side-right camera
+    Sophus::SE3f GetRelativePoseTsrl();
+    Sophus::SE3f GetRelativePoseTlsr();
+    Eigen::Matrix3f GetRelativePoseTlsr_rotation();
+    Eigen::Vector3f GetRelativePoseTlsr_translation();
+
     void SetNewBias(const IMU::Bias &b);
 
     // Check if a MapPoint is in the frustum of the camera
@@ -109,7 +126,8 @@ public:
     // Compute the cell of a keypoint (return false if outside the grid)
     bool PosInGrid(const cv::KeyPoint &kp, int &posX, int &posY);
 
-    vector<size_t> GetFeaturesInArea(const float &x, const float  &y, const float  &r, const int minLevel=-1, const int maxLevel=-1, const bool bRight = false) const;
+    // change boolean to int for support multiple cameras
+    vector<size_t> GetFeaturesInArea(const float &x, const float  &y, const float  &r, const int minLevel=-1, const int maxLevel=-1, const int selectedCamera = 0) const;
 
     // Search a match for each keypoint in the left image to a keypoint in the right image.
     // If there is a match, depth is computed and the right coordinate associated to the left keypoint is stored.
@@ -181,6 +199,15 @@ private:
     Eigen::Matrix<float,3,3> mRlr;
     Eigen::Vector3f mtlr;
 
+    // For Rotation, translationa and Transformation of SideLeft camera
+    Sophus::SE3<float> mTlsl, mTsll;
+    Eigen::Matrix<float,3,3> mRlsl;
+    Eigen::Vector3f mtlsl;
+
+    // For Rotation, translationa and Transformation of SideRight camera
+    Sophus::SE3<float> mTlsr, mTsrl;
+    Eigen::Matrix<float,3,3> mRlsr;
+    Eigen::Vector3f mtlsr;
 
     // IMU linear velocity
     Eigen::Vector3f mVw;
@@ -192,8 +219,12 @@ public:
     // Vocabulary used for relocalization.
     ORBVocabulary* mpORBvocabulary;
 
-    // Feature extractor. The right is used only in the stereo case.
+    // Feature extractor. The right is used only in the stereo case. Sideward cameras are used for multi camera case
     ORBextractor* mpORBextractorLeft, *mpORBextractorRight;
+    ORBextractor* mpORBextractorSideLeft, *mpORBextractorSideRight;
+
+    // Enable Feature extraction
+    bool mbEnableLeft, mbEnableRight, mbEnableSideLeft, mbEnableSideRight;
 
     // Frame timestamp.
     double mTimeStamp;
@@ -225,7 +256,9 @@ public:
     // Vector of keypoints (original for visualization) and undistorted (actually used by the system).
     // In the stereo case, mvKeysUn is redundant as images must be rectified.
     // In the RGB-D case, RGB images can be distorted.
+    // In the multi camera case, mvKeysSideLeft and mvKeysSideRight are for sideward cameras.
     std::vector<cv::KeyPoint> mvKeys, mvKeysRight;
+    std::vector<cv::KeyPoint> mvKeysSideLeft, mvKeysSideRight;
     std::vector<cv::KeyPoint> mvKeysUn;
 
     // Corresponding stereo coordinate and depth for each keypoint.
@@ -240,6 +273,7 @@ public:
 
     // ORB descriptor, each row associated to a keypoint.
     cv::Mat mDescriptors, mDescriptorsRight;
+    cv::Mat mDescriptorsSideLeft, mDescriptorsSideRight;
 
     // MapPoints associated to keypoints, NULL pointer if no association.
     // Flag to identify outlier associations.
@@ -323,15 +357,25 @@ private:
     std::mutex *mpMutexImu;
 
 public:
-    GeometricCamera* mpCamera, *mpCamera2;
+    GeometricCamera* mpCamera, *mpCamera2; // For stereo left and right camera
+    GeometricCamera* mpCamera3, *mpCamera4; // For sideleft and right camera
 
     //Number of KeyPoints extracted in the left and right images
     int Nleft, Nright;
     //Number of Non Lapping Keypoints
     int monoLeft, monoRight;
 
+    //Number of KeyPoints extracted in the sideleft and sideright images
+    int Nsideleft, Nsideright;
+    //Number of Non Lapping Keypoints
+    int monoSideLeft, monoSideRight;
+
     //For stereo matching
     std::vector<int> mvLeftToRightMatch, mvRightToLeftMatch;
+
+    //For sidewards matching, front-left camera only match side-left, front-right camera only match side-right
+    std::vector<int> mvLeftToSideLMatch, mvSideLToLeftMatch;
+    std::vector<int> mvRightToSideRMatch, mvSideRToRightMatch;
 
     //For stereo fisheye matching
     static cv::BFMatcher BFmatcher;
@@ -343,16 +387,35 @@ public:
     //Grid for the right image
     std::vector<std::size_t> mGridRight[FRAME_GRID_COLS][FRAME_GRID_ROWS];
 
+    //Grid for the sideleft images
+    std::vector<std::size_t> mGridSideLeft[FRAME_GRID_COLS][FRAME_GRID_ROWS];
+
+    //Grid for the sideright images
+    std::vector<std::size_t> mGridSideRight[FRAME_GRID_COLS][FRAME_GRID_ROWS];
+
+    //Stereo camera
     Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeStamp, ORBextractor* extractorLeft, ORBextractor* extractorRight, ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth, GeometricCamera* pCamera, GeometricCamera* pCamera2, Sophus::SE3f& Tlr,Frame* pPrevF = static_cast<Frame*>(NULL), const IMU::Calib &ImuCalib = IMU::Calib());
+
+    //Mutli cameras
+    Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const cv::Mat &imSideLeft, const cv::Mat &imSideRight, const double &timeStamp,
+          ORBextractor* extractorLeft, ORBextractor* extractorRight, ORBextractor* extractorSideLeft, ORBextractor* extractorSideRight,
+          bool bEnableLeft, bool bEnableRight, bool bEnableSideLeft, bool bEnableSideRight, ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth,
+          GeometricCamera* pCamera, GeometricCamera* pCamera2, GeometricCamera* pCamera3, GeometricCamera* pCamera4,
+          Sophus::SE3f& Tlr, Sophus::SE3f& Tlsl, Sophus::SE3f& Tlsr, Frame* pPrevF = static_cast<Frame*>(NULL), const IMU::Calib &ImuCalib = IMU::Calib());
 
     //Stereo fisheye
     void ComputeStereoFishEyeMatches();
 
-    bool isInFrustumChecks(MapPoint* pMP, float viewingCosLimit, bool bRight = false);
+    //Stereo fisheye
+    void ComputeMultiFishEyeMatches();
+
+    // change boolean to int for support multiple cameras
+    bool isInFrustumChecks(MapPoint* pMP, float viewingCosLimit, int selectedCamera = 0);
 
     Eigen::Vector3f UnprojectStereoFishEye(const int &i);
 
     cv::Mat imgLeft, imgRight;
+    cv::Mat imgSideLeft, imgSideRight;
 
     void PrintPointDistribution(){
         int left = 0, right = 0;

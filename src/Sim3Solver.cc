@@ -16,6 +16,10 @@
 * If not, see <http://www.gnu.org/licenses/>.
 */
 
+/******************************************************************************
+* Modified by:   Yifu Wang, Alvaro Parra                                                    *
+* Contact:  1fwang927@gmail.com                                               *
+******************************************************************************/
 
 #include "Sim3Solver.h"
 
@@ -31,16 +35,22 @@
 namespace ORB_SLAM3
 {
 
+struct ComparePairs {
+    bool operator()(const std::pair<std::pair<int, int>, int> &a, const std::pair<std::pair<int, int>, int> &b) const {
+        return a.second > b.second;
+    }
+};
 
-Sim3Solver::Sim3Solver(KeyFrame *pKF1, KeyFrame *pKF2, const vector<MapPoint *> &vpMatched12, const bool bFixScale,
+Sim3Solver::Sim3Solver(KeyFrame *pKF1, KeyFrame *pKF2, const vector<MapPoint *> &vpMatched12, int &cameraID1, int &cameraID2, const bool bFixScale,
                        vector<KeyFrame*> vpKeyFrameMatchedMP):
     mnIterations(0), mnBestInliers(0), mbFixScale(bFixScale),
     pCamera1(pKF1->mpCamera), pCamera2(pKF2->mpCamera)
 {
-    bool bDifferentKFs = false;
+    mState = true;
+    bool bDifferentKFs = true;
     if(vpKeyFrameMatchedMP.empty())
     {
-        bDifferentKFs = true;
+        bDifferentKFs = false;
         vpKeyFrameMatchedMP = vector<KeyFrame*>(vpMatched12.size(), pKF2);
     }
 
@@ -57,18 +67,79 @@ Sim3Solver::Sim3Solver(KeyFrame *pKF1, KeyFrame *pKF2, const vector<MapPoint *> 
     mvnIndices1.reserve(mN1);
     mvX3Dc1.reserve(mN1);
     mvX3Dc2.reserve(mN1);
-
-    Eigen::Matrix3f Rcw1 = pKF1->GetRotation();
-    Eigen::Vector3f tcw1 = pKF1->GetTranslation();
-    Eigen::Matrix3f Rcw2 = pKF2->GetRotation();
-    Eigen::Vector3f tcw2 = pKF2->GetTranslation();
-
     mvAllIndices.reserve(mN1);
 
     size_t idx=0;
 
-    KeyFrame* pKFm = pKF2; //Default variable
-    for(int i1=0; i1<mN1; i1++)
+    std::map<std::pair<int,int>, int> camPairCount;
+    KeyFrame* pKFm = pKF2;
+    for(int i1 = 0; i1 < mN1; i1++)
+    {
+        if(!vpMatched12[i1])
+            continue;
+
+        MapPoint* pMP1 = vpKeyFrameMP1[i1];
+        MapPoint* pMP2= vpMatched12[i1];
+
+        if(!pMP1)
+            continue;
+
+        if(pMP1->isBad() || pMP2->isBad())
+            continue;
+
+        if(bDifferentKFs)
+            pKFm = vpKeyFrameMatchedMP[i1];
+
+        auto indices1 = pMP1->GetIndexInKeyFrame(pKF1);
+        auto indices2 = pMP2->GetIndexInKeyFrame(pKFm);
+
+        for (int c1 = 0; c1 < 4; c1++)
+        {
+            int idx1 = (c1 == 0) ? std::get<0>(indices1) :
+                       (c1 == 1) ? std::get<1>(indices1) :
+                       (c1 == 2) ? std::get<2>(indices1) :
+                                   std::get<3>(indices1);
+            if (idx1 < 0)
+                continue;
+
+            for (int c2 = 0; c2 < 4; c2++)
+            {
+                int idx2 = (c2 == 0) ? std::get<0>(indices2) :
+                           (c2 == 1) ? std::get<1>(indices2) :
+                           (c2 == 2) ? std::get<2>(indices2) :
+                                       std::get<3>(indices2);
+                if (idx2 < 0)
+                    continue;
+
+                camPairCount[std::make_pair(c1,c2)]++;
+            }
+        }
+    }
+
+    if(camPairCount.empty()) {
+        mState = false;
+        return;
+    }
+
+    std::vector<std::pair<std::pair<int,int>, int>> camPairsCountVec;
+
+    for (auto const &camPair_count : camPairCount)
+        camPairsCountVec.push_back(std::pair<std::pair<int,int>, int>(camPair_count.first, camPair_count.second));
+
+    std::sort(camPairsCountVec.begin(), camPairsCountVec.end(), ComparePairs());
+
+    const auto bestCamPair = camPairsCountVec[0].first;
+
+    cameraID1 = bestCamPair.first;
+    cameraID2 = bestCamPair.second;
+
+    Eigen::Matrix3f Riw1 = pKF1->GetRotation(cameraID1);
+    Eigen::Vector3f tiw1 = pKF1->GetTranslation(cameraID1);
+
+    Eigen::Matrix3f Riw2 = pKF2->GetRotation(cameraID2);
+    Eigen::Vector3f tiw2 = pKF2->GetTranslation(cameraID2);
+
+    for(int i1 = 0; i1 < mN1; i1++)
     {
         if(vpMatched12[i1])
         {
@@ -84,14 +155,20 @@ Sim3Solver::Sim3Solver(KeyFrame *pKF1, KeyFrame *pKF2, const vector<MapPoint *> 
             if(bDifferentKFs)
                 pKFm = vpKeyFrameMatchedMP[i1];
 
-            int indexKF1 = get<0>(pMP1->GetIndexInKeyFrame(pKF1));
-            int indexKF2 = get<0>(pMP2->GetIndexInKeyFrame(pKFm));
+            int indexKF1 = (cameraID1 == 0) ? std::get<0>(pMP1->GetIndexInKeyFrame(pKF1)) :
+                           (cameraID1 == 1) ? std::get<1>(pMP1->GetIndexInKeyFrame(pKF1)) :
+                           (cameraID1 == 2) ? std::get<2>(pMP1->GetIndexInKeyFrame(pKF1)) :
+                                             std::get<3>(pMP1->GetIndexInKeyFrame(pKF1));
+            int indexKF2 = (cameraID2 == 0) ? std::get<0>(pMP2->GetIndexInKeyFrame(pKFm)) :
+                           (cameraID2 == 1) ? std::get<1>(pMP2->GetIndexInKeyFrame(pKFm)) :
+                           (cameraID2 == 2) ? std::get<2>(pMP2->GetIndexInKeyFrame(pKFm)) :
+                                             std::get<3>(pMP2->GetIndexInKeyFrame(pKFm));
 
-            if(indexKF1<0 || indexKF2<0)
+            if(indexKF1 < 0 || indexKF2 < 0)
                 continue;
 
-            const cv::KeyPoint &kp1 = pKF1->mvKeysUn[indexKF1];
-            const cv::KeyPoint &kp2 = pKFm->mvKeysUn[indexKF2];
+            const cv::KeyPoint &kp1 = pKF1->GetKey(indexKF1);
+            const cv::KeyPoint &kp2 = pKFm->GetKey(indexKF2);
 
             const float sigmaSquare1 = pKF1->mvLevelSigma2[kp1.octave];
             const float sigmaSquare2 = pKFm->mvLevelSigma2[kp2.octave];
@@ -104,15 +181,18 @@ Sim3Solver::Sim3Solver(KeyFrame *pKF1, KeyFrame *pKF2, const vector<MapPoint *> 
             mvnIndices1.push_back(i1);
 
             Eigen::Vector3f X3D1w = pMP1->GetWorldPos();
-            mvX3Dc1.push_back(Rcw1*X3D1w+tcw1);
+            mvX3Dc1.push_back(Riw1 * X3D1w + tiw1);
 
             Eigen::Vector3f X3D2w = pMP2->GetWorldPos();
-            mvX3Dc2.push_back(Rcw2*X3D2w+tcw2);
+            mvX3Dc2.push_back(Riw2 * X3D2w + tiw2);
 
             mvAllIndices.push_back(idx);
             idx++;
         }
     }
+
+    pCamera1 = pKF1->GetCamera(cameraID1);
+    pCamera2 = pKFm->GetCamera(cameraID2);
 
     FromCameraToImage(mvX3Dc1,mvP1im1,pCamera1);
     FromCameraToImage(mvX3Dc2,mvP2im2,pCamera2);
@@ -364,7 +444,8 @@ void Sim3Solver::ComputeSim3(Eigen::Matrix3f &P1, Eigen::Matrix3f &P2)
     // Rotation angle. sin is the norm of the imaginary part, cos is the real part
     double ang=atan2(vec.norm(),evec(0,maxIndex));
 
-    vec = 2*ang*vec/vec.norm(); //Angle-axis representation. quaternion angle is the half
+    if(vec.norm() != 0)
+        vec = 2*ang*vec/vec.norm(); //Angle-axis representation. quaternion angle is the half
     mR12i = Sophus::SO3f::exp(vec).matrix();
 
     // Step 5: Rotate set 2

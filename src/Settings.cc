@@ -16,6 +16,11 @@
 * If not, see <http://www.gnu.org/licenses/>.
 */
 
+/******************************************************************************
+* Modified by:   Yifu Wang                                                    *
+* Contact:  1fwang927@gmail.com                                               *
+******************************************************************************/
+
 #include "Settings.h"
 
 #include "CameraModels/Pinhole.h"
@@ -145,16 +150,23 @@ namespace ORB_SLAM3 {
         cout << "\t-Loaded camera 1" << endl;
 
         //Read second camera if stereo (not rectified)
-        if(sensor_ == System::STEREO || sensor_ == System::IMU_STEREO){
+        if(sensor_ == System::STEREO || sensor_ == System::IMU_STEREO || sensor_ == System::IMU_MULTI){
             readCamera2(fSettings);
             cout << "\t-Loaded camera 2" << endl;
+        }
+
+        //Read sidewards cameras if multi (not rectified)
+        if(sensor_ == System::IMU_MULTI){
+            readCamera3(fSettings);
+            readCamera4(fSettings);
+            cout << "\t-Loaded camera 3 & 4" << endl;
         }
 
         //Read image info
         readImageInfo(fSettings);
         cout << "\t-Loaded image info" << endl;
 
-        if(sensor_ == System::IMU_MONOCULAR || sensor_ == System::IMU_STEREO || sensor_ == System::IMU_RGBD){
+        if(sensor_ == System::IMU_MONOCULAR || sensor_ == System::IMU_STEREO || sensor_ == System::IMU_RGBD || sensor_ == System::IMU_MULTI){
             readIMU(fSettings);
             cout << "\t-Loaded IMU calibration" << endl;
         }
@@ -259,7 +271,7 @@ namespace ORB_SLAM3 {
             calibration1_ = new KannalaBrandt8(vCalibration);
             originalCalib1_ = new KannalaBrandt8(vCalibration);
 
-            if(sensor_ == System::STEREO || sensor_ == System::IMU_STEREO){
+            if(sensor_ == System::STEREO || sensor_ == System::IMU_STEREO || sensor_ == System::IMU_MULTI){
                 int colBegin = readParameter<int>(fSettings,"Camera1.overlappingBegin",found);
                 int colEnd = readParameter<int>(fSettings,"Camera1.overlappingEnd",found);
                 vector<int> vOverlapping = {colBegin, colEnd};
@@ -315,10 +327,6 @@ namespace ORB_SLAM3 {
             float cx = readParameter<float>(fSettings,"Camera2.cx",found);
             float cy = readParameter<float>(fSettings,"Camera2.cy",found);
 
-            // float k0 = readParameter<float>(fSettings,"Camera1.k1",found);
-            // float k1 = readParameter<float>(fSettings,"Camera1.k2",found);
-            // float k2 = readParameter<float>(fSettings,"Camera1.k3",found);
-            // float k3 = readParameter<float>(fSettings,"Camera1.k4",found);
             float k0 = readParameter<float>(fSettings,"Camera2.k1",found);
             float k1 = readParameter<float>(fSettings,"Camera2.k2",found);
             float k2 = readParameter<float>(fSettings,"Camera2.k3",found);
@@ -343,8 +351,7 @@ namespace ORB_SLAM3 {
             bf_ = b_ * calibration1_->getParameter(0);
         }
         else{
-            cv::Mat cvTrl = readParameter<cv::Mat>(fSettings,"Stereo.T_c1_c2",found);
-            cv::Mat cvTlr = cvTrl.inv();
+            cv::Mat cvTlr = readParameter<cv::Mat>(fSettings,"Stereo.T_c1_c2",found);
             Tlr_ = Converter::toSophus(cvTlr);
 
             //TODO: also search for Trl and invert if necessary
@@ -356,6 +363,132 @@ namespace ORB_SLAM3 {
         thDepth_ = readParameter<float>(fSettings,"Stereo.ThDepth",found);
 
 
+    }
+
+    void Settings::readCamera3(cv::FileStorage &fSettings) {
+        bool found;
+        vector<float> vCalibration;
+        if (cameraType_ == PinHole) {
+            bNeedToRectify_ = true;
+
+            //Read intrinsic parameters
+            float fx = readParameter<float>(fSettings,"Camera3.fx",found);
+            float fy = readParameter<float>(fSettings,"Camera3.fy",found);
+            float cx = readParameter<float>(fSettings,"Camera3.cx",found);
+            float cy = readParameter<float>(fSettings,"Camera3.cy",found);
+
+
+            vCalibration = {fx, fy, cx, cy};
+
+            calibration3_ = new Pinhole(vCalibration);
+            originalCalib3_ = new Pinhole(vCalibration);
+
+            //Check if it is a distorted PinHole
+            readParameter<float>(fSettings,"Camera3.k1",found,false);
+            if(found){
+                readParameter<float>(fSettings,"Camera3.k3",found,false);
+                if(found){
+                    vPinHoleDistorsion3_.resize(5);
+                    vPinHoleDistorsion3_[4] = readParameter<float>(fSettings,"Camera3.k3",found);
+                }
+                else{
+                    vPinHoleDistorsion3_.resize(4);
+                }
+                vPinHoleDistorsion3_[0] = readParameter<float>(fSettings,"Camera3.k1",found);
+                vPinHoleDistorsion3_[1] = readParameter<float>(fSettings,"Camera3.k2",found);
+                vPinHoleDistorsion3_[2] = readParameter<float>(fSettings,"Camera3.p1",found);
+                vPinHoleDistorsion3_[3] = readParameter<float>(fSettings,"Camera3.p2",found);
+            }
+        }
+        else if(cameraType_ == KannalaBrandt){
+            //Read intrinsic parameters
+            float fx = readParameter<float>(fSettings,"Camera3.fx",found);
+            float fy = readParameter<float>(fSettings,"Camera3.fy",found);
+            float cx = readParameter<float>(fSettings,"Camera3.cx",found);
+            float cy = readParameter<float>(fSettings,"Camera3.cy",found);
+
+            float k0 = readParameter<float>(fSettings,"Camera3.k1",found);
+            float k1 = readParameter<float>(fSettings,"Camera3.k2",found);
+            float k2 = readParameter<float>(fSettings,"Camera3.k3",found);
+            float k3 = readParameter<float>(fSettings,"Camera3.k4",found);
+
+
+            vCalibration = {fx,fy,cx,cy,k0,k1,k2,k3};
+
+            calibration3_ = new KannalaBrandt8(vCalibration);
+            originalCalib3_ = new KannalaBrandt8(vCalibration);
+
+            int colBegin = readParameter<int>(fSettings,"Camera3.overlappingBegin",found);
+            int colEnd = readParameter<int>(fSettings,"Camera3.overlappingEnd",found);
+            vector<int> vOverlapping = {colBegin, colEnd};
+
+            static_cast<KannalaBrandt8*>(calibration3_)->mvLappingArea = vOverlapping;
+        }
+
+        thDepth_ = readParameter<float>(fSettings,"Stereo.ThDepth",found);
+    }
+
+    void Settings::readCamera4(cv::FileStorage &fSettings) {
+        bool found;
+        vector<float> vCalibration;
+        if (cameraType_ == PinHole) {
+            bNeedToRectify_ = true;
+
+            //Read intrinsic parameters
+            float fx = readParameter<float>(fSettings,"Camera4.fx",found);
+            float fy = readParameter<float>(fSettings,"Camera4.fy",found);
+            float cx = readParameter<float>(fSettings,"Camera4.cx",found);
+            float cy = readParameter<float>(fSettings,"Camera4.cy",found);
+
+
+            vCalibration = {fx, fy, cx, cy};
+
+            calibration4_ = new Pinhole(vCalibration);
+            originalCalib4_ = new Pinhole(vCalibration);
+
+            //Check if it is a distorted PinHole
+            readParameter<float>(fSettings,"Camera4.k1",found,false);
+            if(found){
+                readParameter<float>(fSettings,"Camera4.k3",found,false);
+                if(found){
+                    vPinHoleDistorsion4_.resize(5);
+                    vPinHoleDistorsion4_[4] = readParameter<float>(fSettings,"Camera4.k3",found);
+                }
+                else{
+                    vPinHoleDistorsion4_.resize(4);
+                }
+                vPinHoleDistorsion4_[0] = readParameter<float>(fSettings,"Camera4.k1",found);
+                vPinHoleDistorsion4_[1] = readParameter<float>(fSettings,"Camera4.k2",found);
+                vPinHoleDistorsion4_[2] = readParameter<float>(fSettings,"Camera4.p1",found);
+                vPinHoleDistorsion4_[3] = readParameter<float>(fSettings,"Camera4.p2",found);
+            }
+        }
+        else if(cameraType_ == KannalaBrandt){
+            //Read intrinsic parameters
+            float fx = readParameter<float>(fSettings,"Camera4.fx",found);
+            float fy = readParameter<float>(fSettings,"Camera4.fy",found);
+            float cx = readParameter<float>(fSettings,"Camera4.cx",found);
+            float cy = readParameter<float>(fSettings,"Camera4.cy",found);
+
+            float k0 = readParameter<float>(fSettings,"Camera4.k1",found);
+            float k1 = readParameter<float>(fSettings,"Camera4.k2",found);
+            float k2 = readParameter<float>(fSettings,"Camera4.k3",found);
+            float k3 = readParameter<float>(fSettings,"Camera4.k4",found);
+
+
+            vCalibration = {fx,fy,cx,cy,k0,k1,k2,k3};
+
+            calibration4_ = new KannalaBrandt8(vCalibration);
+            originalCalib4_ = new KannalaBrandt8(vCalibration);
+
+            int colBegin = readParameter<int>(fSettings,"Camera4.overlappingBegin",found);
+            int colEnd = readParameter<int>(fSettings,"Camera4.overlappingEnd",found);
+            vector<int> vOverlapping = {colBegin, colEnd};
+
+            static_cast<KannalaBrandt8*>(calibration4_)->mvLappingArea = vOverlapping;
+        }
+
+        thDepth_ = readParameter<float>(fSettings,"Stereo.ThDepth",found);
     }
 
     void Settings::readImageInfo(cv::FileStorage &fSettings) {
@@ -379,9 +512,17 @@ namespace ORB_SLAM3 {
                 calibration1_->setParameter(calibration1_->getParameter(3) * scaleRowFactor, 3);
 
 
-                if((sensor_ == System::STEREO || sensor_ == System::IMU_STEREO) && cameraType_ != Rectified){
+                if((sensor_ == System::STEREO || sensor_ == System::IMU_STEREO || sensor_ == System::IMU_MULTI) && cameraType_ != Rectified){
                     calibration2_->setParameter(calibration2_->getParameter(1) * scaleRowFactor, 1);
                     calibration2_->setParameter(calibration2_->getParameter(3) * scaleRowFactor, 3);
+
+                    if (sensor_ == System::IMU_MULTI){
+                        calibration3_->setParameter(calibration3_->getParameter(1) * scaleRowFactor, 1);
+                        calibration3_->setParameter(calibration3_->getParameter(3) * scaleRowFactor, 3);
+
+                        calibration4_->setParameter(calibration4_->getParameter(1) * scaleRowFactor, 1);
+                        calibration4_->setParameter(calibration4_->getParameter(3) * scaleRowFactor, 3);
+                    }
                 }
             }
         }
@@ -397,9 +538,17 @@ namespace ORB_SLAM3 {
                 calibration1_->setParameter(calibration1_->getParameter(0) * scaleColFactor, 0);
                 calibration1_->setParameter(calibration1_->getParameter(2) * scaleColFactor, 2);
 
-                if((sensor_ == System::STEREO || sensor_ == System::IMU_STEREO) && cameraType_ != Rectified){
+                if((sensor_ == System::STEREO || sensor_ == System::IMU_STEREO || sensor_ == System::IMU_MULTI) && cameraType_ != Rectified){
                     calibration2_->setParameter(calibration2_->getParameter(0) * scaleColFactor, 0);
                     calibration2_->setParameter(calibration2_->getParameter(2) * scaleColFactor, 2);
+
+                    if (sensor_ == System::IMU_MULTI){
+                        calibration3_->setParameter(calibration3_->getParameter(0) * scaleColFactor, 0);
+                        calibration3_->setParameter(calibration3_->getParameter(2) * scaleColFactor, 2);
+
+                        calibration4_->setParameter(calibration4_->getParameter(0) * scaleColFactor, 0);
+                        calibration4_->setParameter(calibration4_->getParameter(2) * scaleColFactor, 2);
+                    }
 
                     if(cameraType_ == KannalaBrandt){
                         static_cast<KannalaBrandt8*>(calibration1_)->mvLappingArea[0] *= scaleColFactor;
@@ -407,6 +556,14 @@ namespace ORB_SLAM3 {
 
                         static_cast<KannalaBrandt8*>(calibration2_)->mvLappingArea[0] *= scaleColFactor;
                         static_cast<KannalaBrandt8*>(calibration2_)->mvLappingArea[1] *= scaleColFactor;
+
+                        if (sensor_ == System::IMU_MULTI){
+                            static_cast<KannalaBrandt8 *>(calibration3_)->mvLappingArea[0] *= scaleColFactor;
+                            static_cast<KannalaBrandt8 *>(calibration3_)->mvLappingArea[1] *= scaleColFactor;
+
+                            static_cast<KannalaBrandt8 *>(calibration4_)->mvLappingArea[0] *= scaleColFactor;
+                            static_cast<KannalaBrandt8 *>(calibration4_)->mvLappingArea[1] *= scaleColFactor;
+                        }
                     }
                 }
             }
@@ -426,6 +583,19 @@ namespace ORB_SLAM3 {
 
         cv::Mat cvTbc = readParameter<cv::Mat>(fSettings,"IMU.T_b_c1",found);
         Tbc_ = Converter::toSophus(cvTbc);
+
+        if (sensor_ == System::IMU_MULTI){
+            cv::Mat cvTbcl = readParameter<cv::Mat>(fSettings,"IMU.T_b_c3",found);
+            Tbcl_ = Converter::toSophus(cvTbcl);
+
+            cv::Mat cvTbcr = readParameter<cv::Mat>(fSettings,"IMU.T_b_c4",found);
+            Tbcr_ = Converter::toSophus(cvTbcr);
+
+            Tlsl_ = Tbc_.inverse() * Tbcl_;
+            Tlsr_ = Tbc_.inverse() * Tbcr_;
+            Tsl_ = Tlsl_.inverse();
+            Tsr_ = Tlsr_.inverse() * Tlr_;
+        }
 
         readParameter<int>(fSettings,"IMU.InsertKFsWhenLost",found,false);
         if(found){
@@ -523,7 +693,7 @@ namespace ORB_SLAM3 {
         bf_ = b_ * P1.at<double>(0,0);
 
         //Update relative pose between camera 1 and IMU if necessary
-        if(sensor_ == System::IMU_STEREO){
+        if(sensor_ == System::IMU_STEREO || sensor_ == System::IMU_MULTI){
             Eigen::Matrix3f eigenR_r1_u1;
             cv::cv2eigen(R_r1_u1,eigenR_r1_u1);
             Sophus::SE3f T_r1_u1(eigenR_r1_u1,Eigen::Vector3f::Zero());
@@ -555,7 +725,7 @@ namespace ORB_SLAM3 {
             output << " ]" << endl;
         }
 
-        if(settings.sensor_ == System::STEREO || settings.sensor_ == System::IMU_STEREO){
+        if(settings.sensor_ == System::STEREO || settings.sensor_ == System::IMU_STEREO || settings.sensor_ == System::IMU_MULTI){
             output << "\t-Camera 2 parameters (";
             if(settings.cameraType_ == Settings::PinHole || settings.cameraType_ ==  Settings::Rectified){
                 output << "Pinhole";
@@ -563,15 +733,59 @@ namespace ORB_SLAM3 {
             else{
                 output << "Kannala-Brandt";
             }
-            output << "" << ": [";
-            for(size_t i = 0; i < settings.originalCalib2_->size(); i++){
+            output << ")" << ": [";
+            for (size_t i = 0; i < settings.originalCalib2_->size(); i++){
                 output << " " << settings.originalCalib2_->getParameter(i);
             }
             output << " ]" << endl;
 
             if(!settings.vPinHoleDistorsion2_.empty()){
-                output << "\t-Camera 1 distortion parameters: [ ";
+                output << "\t-Camera 2 distortion parameters: [ ";
                 for(float d : settings.vPinHoleDistorsion2_){
+                    output << " " << d;
+                }
+                output << " ]" << endl;
+            }
+        }
+
+        if(settings.sensor_ == System::IMU_MULTI){
+            output << "\t-Camera 3 parameters (";
+            if(settings.cameraType_ == Settings::PinHole || settings.cameraType_ ==  Settings::Rectified){
+                output << "Pinhole";
+            }
+            else{
+                output << "Kannala-Brandt";
+            }
+            output << ")" << ": [";
+            for (size_t i = 0; i < settings.originalCalib3_->size(); i++){
+                output << " " << settings.originalCalib3_->getParameter(i);
+            }
+            output << " ]" << endl;
+
+            output << "\t-Camera 4 parameters (";
+            if(settings.cameraType_ == Settings::PinHole || settings.cameraType_ ==  Settings::Rectified){
+                output << "Pinhole";
+            }
+            else{
+                output << "Kannala-Brandt";
+            }
+            output << ")" << ": [";
+            for (size_t i = 0; i < settings.originalCalib4_->size(); i++){
+                output << " " << settings.originalCalib4_->getParameter(i);
+            }
+            output << " ]" << endl;
+
+            if(!settings.vPinHoleDistorsion3_.empty()){
+                output << "\t-Camera 3 distortion parameters: [ ";
+                for(float d : settings.vPinHoleDistorsion2_){
+                    output << " " << d;
+                }
+                output << " ]" << endl;
+            }
+
+            if (!settings.vPinHoleDistorsion4_.empty()){
+                output << "\t-Camera 4 distortion parameters: [ ";
+                for (float d : settings.vPinHoleDistorsion4_){
                     output << " " << d;
                 }
                 output << " ]" << endl;
@@ -595,7 +809,7 @@ namespace ORB_SLAM3 {
             }
             output << " ]" << endl;
 
-            if((settings.sensor_ == System::STEREO || settings.sensor_ == System::IMU_STEREO) &&
+            if((settings.sensor_ == System::STEREO || settings.sensor_ == System::IMU_STEREO || settings.sensor_ == System::IMU_MULTI) &&
                 settings.cameraType_ == Settings::KannalaBrandt){
                 output << "\t-Camera 2 parameters after resize: [ ";
                 for(size_t i = 0; i < settings.calibration2_->size(); i++){
@@ -603,12 +817,27 @@ namespace ORB_SLAM3 {
                 }
                 output << " ]" << endl;
             }
+
+            if((settings.sensor_ == System::IMU_MULTI) &&
+                settings.cameraType_ == Settings::KannalaBrandt){
+                output << "\t-Camera 3 parameters after resize: [ ";
+                for(size_t i = 0; i < settings.calibration3_->size(); i++){
+                    output << " " << settings.calibration3_->getParameter(i);
+                }
+                output << " ]" << endl;
+
+                output << "\t-Camera 4 parameters after resize: [ ";
+                for(size_t i = 0; i < settings.calibration4_->size(); i++){
+                    output << " " << settings.calibration4_->getParameter(i);
+                }
+                output << " ]" << endl;
+            }
+
         }
 
         output << "\t-Sequence FPS: " << settings.fps_ << endl;
 
-        //Stereo stuff
-        if(settings.sensor_ == System::STEREO || settings.sensor_ == System::IMU_STEREO){
+        if(settings.sensor_ == System::STEREO || settings.sensor_ == System::IMU_STEREO || settings.sensor_ == System::IMU_MULTI){
             output << "\t-Stereo baseline: " << settings.b_ << endl;
             output << "\t-Stereo depth threshold : " << settings.thDepth_ << endl;
 
@@ -617,6 +846,12 @@ namespace ORB_SLAM3 {
                 auto vOverlapping2 = static_cast<KannalaBrandt8*>(settings.calibration2_)->mvLappingArea;
                 output << "\t-Camera 1 overlapping area: [ " << vOverlapping1[0] << " , " << vOverlapping1[1] << " ]" << endl;
                 output << "\t-Camera 2 overlapping area: [ " << vOverlapping2[0] << " , " << vOverlapping2[1] << " ]" << endl;
+                if (settings.sensor_ == System::IMU_MULTI){
+                    auto vOverlapping3 = static_cast<KannalaBrandt8 *>(settings.calibration3_)->mvLappingArea;
+                    auto vOverlapping4 = static_cast<KannalaBrandt8 *>(settings.calibration4_)->mvLappingArea;
+                    output << "\t-Camera 3 overlapping area: [ " << vOverlapping3[0] << " , " << vOverlapping3[1] << " ]" << endl;
+                    output << "\t-Camera 4 overlapping area: [ " << vOverlapping4[0] << " , " << vOverlapping4[1] << " ]" << endl;
+                }
             }
         }
 

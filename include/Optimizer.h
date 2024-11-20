@@ -16,6 +16,10 @@
 * If not, see <http://www.gnu.org/licenses/>.
 */
 
+/******************************************************************************
+* Modified by:   Yifu Wang                                                    *
+* Contact:  1fwang927@gmail.com                                               *
+******************************************************************************/
 
 #ifndef OPTIMIZER_H
 #define OPTIMIZER_H
@@ -79,7 +83,7 @@ public:
     // if bFixScale is true, optimize SE3 (stereo,rgbd), Sim3 otherwise (mono) (NEW)
     static int OptimizeSim3(KeyFrame* pKF1, KeyFrame* pKF2, std::vector<MapPoint *> &vpMatches1,
                             g2o::Sim3 &g2oS12, const float th2, const bool bFixScale,
-                            Eigen::Matrix<double,7,7> &mAcumHessian, const bool bAllPoints=false);
+                            Eigen::Matrix<double,7,7> &mAcumHessian, const bool bAllPoints=false, const int cameraID1=0, const int cameraID2=0);
 
     // For inertial systems
 

@@ -16,6 +16,11 @@
 * If not, see <http://www.gnu.org/licenses/>.
 */
 
+/******************************************************************************
+* Modified by:   Yifu Wang                                                    *
+* Contact:  1fwang927@gmail.com                                               *
+******************************************************************************/
+
 #ifndef ORB_SLAM3_OPTIMIZABLETYPES_H
 #define ORB_SLAM3_OPTIMIZABLETYPES_H
 
@@ -86,6 +91,66 @@ public:
     g2o::SE3Quat mTrl;
 };
 
+class  EdgeSE3ProjectXYZOnlySLPoseToBody: public  g2o::BaseUnaryEdge<2, Eigen::Vector2d, g2o::VertexSE3Expmap>{
+public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+    EdgeSE3ProjectXYZOnlySLPoseToBody(){}
+
+    bool read(std::istream& is);
+
+    bool write(std::ostream& os) const;
+
+    void computeError()  {
+        const g2o::VertexSE3Expmap* v1 = static_cast<const g2o::VertexSE3Expmap*>(_vertices[0]);
+        Eigen::Vector2d obs(_measurement);
+        _error = obs-pCamera->project((mTsll * v1->estimate()).map(Xw));
+    }
+
+    bool isDepthPositive() {
+        const g2o::VertexSE3Expmap* v1 = static_cast<const g2o::VertexSE3Expmap*>(_vertices[0]);
+        return ((mTsll * v1->estimate()).map(Xw))(2)>0.0;
+    }
+
+
+    virtual void linearizeOplus();
+
+    Eigen::Vector3d Xw;
+    GeometricCamera* pCamera;
+
+    g2o::SE3Quat mTsll;
+};
+
+class  EdgeSE3ProjectXYZOnlySRPoseToBody: public  g2o::BaseUnaryEdge<2, Eigen::Vector2d, g2o::VertexSE3Expmap>{
+public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+    EdgeSE3ProjectXYZOnlySRPoseToBody(){}
+
+    bool read(std::istream& is);
+
+    bool write(std::ostream& os) const;
+
+    void computeError()  {
+        const g2o::VertexSE3Expmap* v1 = static_cast<const g2o::VertexSE3Expmap*>(_vertices[0]);
+        Eigen::Vector2d obs(_measurement);
+        _error = obs-pCamera->project((mTsrl * v1->estimate()).map(Xw));
+    }
+
+    bool isDepthPositive() {
+        const g2o::VertexSE3Expmap* v1 = static_cast<const g2o::VertexSE3Expmap*>(_vertices[0]);
+        return ((mTsrl * v1->estimate()).map(Xw))(2)>0.0;
+    }
+
+
+    virtual void linearizeOplus();
+
+    Eigen::Vector3d Xw;
+    GeometricCamera* pCamera;
+
+    g2o::SE3Quat mTsrl;
+};
+
 class  EdgeSE3ProjectXYZ: public  g2o::BaseBinaryEdge<2, Eigen::Vector2d, g2o::VertexSBAPointXYZ, g2o::VertexSE3Expmap>{
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -141,6 +206,64 @@ public:
 
     GeometricCamera* pCamera;
     g2o::SE3Quat mTrl;
+};
+
+class  EdgeSE3ProjectXYZSLToBody: public  g2o::BaseBinaryEdge<2, Eigen::Vector2d, g2o::VertexSBAPointXYZ, g2o::VertexSE3Expmap>{
+public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+    EdgeSE3ProjectXYZSLToBody();
+
+    bool read(std::istream& is);
+
+    bool write(std::ostream& os) const;
+
+    void computeError()  {
+        const g2o::VertexSE3Expmap* v1 = static_cast<const g2o::VertexSE3Expmap*>(_vertices[1]);
+        const g2o::VertexSBAPointXYZ* v2 = static_cast<const g2o::VertexSBAPointXYZ*>(_vertices[0]);
+        Eigen::Vector2d obs(_measurement);
+        _error = obs-pCamera->project((mTsll * v1->estimate()).map(v2->estimate()));
+    }
+
+    bool isDepthPositive() {
+        const g2o::VertexSE3Expmap* v1 = static_cast<const g2o::VertexSE3Expmap*>(_vertices[1]);
+        const g2o::VertexSBAPointXYZ* v2 = static_cast<const g2o::VertexSBAPointXYZ*>(_vertices[0]);
+        return ((mTsll * v1->estimate()).map(v2->estimate()))(2)>0.0;
+    }
+
+    virtual void linearizeOplus();
+
+    GeometricCamera* pCamera;
+    g2o::SE3Quat mTsll;
+};
+
+class  EdgeSE3ProjectXYZSRToBody: public  g2o::BaseBinaryEdge<2, Eigen::Vector2d, g2o::VertexSBAPointXYZ, g2o::VertexSE3Expmap>{
+public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+    EdgeSE3ProjectXYZSRToBody();
+
+    bool read(std::istream& is);
+
+    bool write(std::ostream& os) const;
+
+    void computeError()  {
+        const g2o::VertexSE3Expmap* v1 = static_cast<const g2o::VertexSE3Expmap*>(_vertices[1]);
+        const g2o::VertexSBAPointXYZ* v2 = static_cast<const g2o::VertexSBAPointXYZ*>(_vertices[0]);
+        Eigen::Vector2d obs(_measurement);
+        _error = obs-pCamera->project((mTsrl * v1->estimate()).map(v2->estimate()));
+    }
+
+    bool isDepthPositive() {
+        const g2o::VertexSE3Expmap* v1 = static_cast<const g2o::VertexSE3Expmap*>(_vertices[1]);
+        const g2o::VertexSBAPointXYZ* v2 = static_cast<const g2o::VertexSBAPointXYZ*>(_vertices[0]);
+        return ((mTsrl * v1->estimate()).map(v2->estimate()))(2)>0.0;
+    }
+
+    virtual void linearizeOplus();
+
+    GeometricCamera* pCamera;
+    g2o::SE3Quat mTsrl;
 };
 
 class VertexSim3Expmap : public g2o::BaseVertex<7, g2o::Sim3>

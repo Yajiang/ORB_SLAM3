@@ -16,6 +16,10 @@
 * If not, see <http://www.gnu.org/licenses/>.
 */
 
+/******************************************************************************
+* Modified by:   Yifu Wang, Alvaro Parra                                                    *
+* Contact:  1fwang927@gmail.com                                               *
+******************************************************************************/
 
 #ifndef LOOPCLOSING_H
 #define LOOPCLOSING_H
@@ -32,6 +36,13 @@
 #include <thread>
 #include <mutex>
 #include "Thirdparty/g2o/g2o/types/types_seven_dof_expmap.h"
+
+#include <condition_variable>
+
+/******************************************************************************
+* Modified by:   Yifu Wang                                                    *
+* Contact:  1fwang927@gmail.com                                               *
+******************************************************************************/
 
 namespace ORB_SLAM3
 {
@@ -80,7 +91,13 @@ public:
 
     void RequestFinish();
 
+    void MergeDetectedCallback();
+    void LoopDetectedCallback();
+
     bool isFinished();
+
+    void ActivateLC();
+    void DeActivateLC();
 
     Viewer* mpViewer;
 
@@ -118,20 +135,27 @@ public:
 
 protected:
 
+    struct CameraMatch {
+        int cameraID1;
+        int cameraID2;
+
+        CameraMatch(int camid1 = 0, int camid2 = 0) : cameraID1(camid1), cameraID2(camid2) {}
+    };
+
     bool CheckNewKeyFrames();
 
 
     //Methods to implement the new place recognition algorithm
     bool NewDetectCommonRegions();
     bool DetectAndReffineSim3FromLastKF(KeyFrame* pCurrentKF, KeyFrame* pMatchedKF, g2o::Sim3 &gScw, int &nNumProjMatches,
-                                        std::vector<MapPoint*> &vpMPs, std::vector<MapPoint*> &vpMatchedMPs);
+                                        std::vector<MapPoint*> &vpMPs, std::vector<MapPoint*> &vpMatchedMPs, CameraMatch &mCameraPair);
     bool DetectCommonRegionsFromBoW(std::vector<KeyFrame*> &vpBowCand, KeyFrame* &pMatchedKF, KeyFrame* &pLastCurrentKF, g2o::Sim3 &g2oScw,
-                                     int &nNumCoincidences, std::vector<MapPoint*> &vpMPs, std::vector<MapPoint*> &vpMatchedMPs);
+                                     int &nNumCoincidences, std::vector<MapPoint*> &vpMPs, std::vector<MapPoint*> &vpMatchedMPs, CameraMatch &mCameraPair);
     bool DetectCommonRegionsFromLastKF(KeyFrame* pCurrentKF, KeyFrame* pMatchedKF, g2o::Sim3 &gScw, int &nNumProjMatches,
-                                            std::vector<MapPoint*> &vpMPs, std::vector<MapPoint*> &vpMatchedMPs);
+                                            std::vector<MapPoint*> &vpMPs, std::vector<MapPoint*> &vpMatchedMPs, CameraMatch &mCameraPair);
     int FindMatchesByProjection(KeyFrame* pCurrentKF, KeyFrame* pMatchedKFw, g2o::Sim3 &g2oScw,
                                 set<MapPoint*> &spMatchedMPinOrigin, vector<MapPoint*> &vpMapPoints,
-                                vector<MapPoint*> &vpMatchedMapPoints);
+                                vector<MapPoint*> &vpMatchedMapPoints, CameraMatch &mCameraPair);
 
 
     void SearchAndFuse(const KeyFrameAndPose &CorrectedPosesMap, vector<MapPoint*> &vpMapPoints);
@@ -185,6 +209,9 @@ protected:
 
     //-------
     Map* mpLastMap;
+
+    CameraMatch mLoopCameraPair;
+    CameraMatch mMergeCameraPair;
 
     bool mbLoopDetected;
     int mnLoopNumCoincidences;
@@ -243,6 +270,7 @@ protected:
 #ifdef REGISTER_LOOP
     string mstrFolderLoop;
 #endif
+    std::condition_variable thereAreKeyFramesToProcess;
 };
 
 } //namespace ORB_SLAM

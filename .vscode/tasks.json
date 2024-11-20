@@ -2,18 +2,18 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "CMake: Configure",
+            "label": "CMake: Configure RelWithDebInfo",
             "type": "shell",
             "command": "cmake",
             "args": [
                 "-S",
                 ".", // Source directory
                 "-B",
-                "build", // Build directory
+                "build/RelWithDebInfo", // Build directory
                 "-G",
                 "Unix Makefiles", // Generator (change to "Unix Makefiles" or "MSBuild" as needed)
                 "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON",
-                "-DCMAKE_BUILD_TYPE=Debug"
+                "-DCMAKE_BUILD_TYPE=RelWithDebInfo"
             ],
             "group": {
                 "kind": "build",
@@ -32,11 +32,11 @@
                 "-S",
                 ".", // Source directory
                 "-B",
-                "build_release", // Build directory
+                "build/Release", // Build directory
                 "-G",
                 "Unix Makefiles", // Generator (change to "Unix Makefiles" or "MSBuild" as needed)
                 "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON",
-                "-DCMAKE_BUILD_TYPE=RelWithDebInfo"
+                "-DCMAKE_BUILD_TYPE=Release"
             ],
             "group": {
                 "kind": "build",
@@ -48,12 +48,12 @@
             "detail": "Configure the CMake project"
         },
         {
-            "label": "CMake: Build",
+            "label": "CMake: Build Release",
             "type": "shell",
             "command": "cmake",
             "args": [
                 "--build",
-                "build", // Build directory
+                "build/Release", // Build directory
                 "-j16",
             ],
             "group": {
@@ -67,12 +67,12 @@
             "detail": "Build the CMake project"
         },
         {
-            "label": "CMake: Build Release",
+            "label": "CMake: Build RelWithDebInfo",
             "type": "shell",
             "command": "cmake",
             "args": [
                 "--build",
-                "build_release", // Build directory
+                "build/RelWithDebInfo", // Build directory
                 "-j16",
             ],
             "group": {

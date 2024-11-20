@@ -16,6 +16,10 @@
 * If not, see <http://www.gnu.org/licenses/>.
 */
 
+/******************************************************************************
+* Modified by:   Yifu Wang                                                    *
+* Contact:  1fwang927@gmail.com                                               *
+******************************************************************************/
 
 #ifndef SYSTEM_H
 #define SYSTEM_H
@@ -91,6 +95,7 @@ public:
         IMU_MONOCULAR=3,
         IMU_STEREO=4,
         IMU_RGBD=5,
+        IMU_MULTI=6,
     };
 
     // File type
@@ -120,11 +125,19 @@ public:
     // Returns the camera pose (empty if tracking fails).
     Sophus::SE3f TrackMonocular(const cv::Mat &im, const double &timestamp, const vector<IMU::Point>& vImuMeas = vector<IMU::Point>(), string filename="");
 
+    // Proccess the given multi frame. Images must be synchronized and rectified.
+    // Input images: RGB (CV_8UC3) or grayscale (CV_8U). RGB is converted to grayscale.
+    // Returns the camera pose (empty if tracking fails).
+    Sophus::SE3f TrackMulti(const cv::Mat &imLeft, const cv::Mat &imRight, const cv::Mat &imSideLeft, const cv::Mat &imSideRight, const double &timestamp, const vector<IMU::Point>& vImuMeas = vector<IMU::Point>(), string filename="");
 
     // This stops local mapping thread (map building) and performs only camera tracking.
     void ActivateLocalizationMode();
     // This resumes local mapping thread and performs SLAM again.
     void DeactivateLocalizationMode();
+
+    // Activate / DeActivate Loop Closure.
+    void ActivateLC();
+    void DeActivateLC();
 
     // Returns true if there have been a big map change (loop closure, global BA)
     // since last call to this function

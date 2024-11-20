@@ -16,6 +16,10 @@
 * If not, see <http://www.gnu.org/licenses/>.
 */
 
+/******************************************************************************
+* Modified by:   Yifu Wang                                                    *
+* Contact:  1fwang927@gmail.com                                               *
+******************************************************************************/
 #ifndef ORB_SLAM3_SETTINGS_H
 #define ORB_SLAM3_SETTINGS_H
 
@@ -68,10 +72,19 @@ namespace ORB_SLAM3 {
         CameraType cameraType() {return cameraType_;}
         GeometricCamera* camera1() {return calibration1_;}
         GeometricCamera* camera2() {return calibration2_;}
+        GeometricCamera* camera3() {return calibration3_;}
+        GeometricCamera* camera4() {return calibration4_;}
         cv::Mat camera1DistortionCoef() {return cv::Mat(vPinHoleDistorsion1_.size(),1,CV_32F,vPinHoleDistorsion1_.data());}
-        cv::Mat camera2DistortionCoef() {return cv::Mat(vPinHoleDistorsion2_.size(),1,CV_32F,vPinHoleDistorsion1_.data());}
+        cv::Mat camera2DistortionCoef() {return cv::Mat(vPinHoleDistorsion2_.size(),1,CV_32F,vPinHoleDistorsion2_.data());}
+        cv::Mat camera3DistortionCoef() {return cv::Mat(vPinHoleDistorsion3_.size(),1,CV_32F,vPinHoleDistorsion3_.data());}
+        cv::Mat camera4DistortionCoef() {return cv::Mat(vPinHoleDistorsion4_.size(),1,CV_32F,vPinHoleDistorsion4_.data());}
 
         Sophus::SE3f Tlr() {return Tlr_;}
+        Sophus::SE3f Tsl() {return Tsl_;}
+        Sophus::SE3f Tsr() {return Tsr_;}
+        Sophus::SE3f Tlsl() {return Tlsl_;}
+        Sophus::SE3f Tlsr() {return Tlsr_;}
+
         float bf() {return bf_;}
         float b() {return b_;}
         float thDepth() {return thDepth_;}
@@ -90,6 +103,9 @@ namespace ORB_SLAM3 {
         float accWalk() {return accWalk_;}
         float imuFrequency() {return imuFrequency_;}
         Sophus::SE3f Tbc() {return Tbc_;}
+        Sophus::SE3f Tbcl() {return Tbcl_;}
+        Sophus::SE3f Tbcr() {return Tbcr_;}
+
         bool insertKFsWhenLost() {return insertKFsWhenLost_;}
 
         float depthMapFactor() {return depthMapFactor_;}
@@ -146,6 +162,8 @@ namespace ORB_SLAM3 {
 
         void readCamera1(cv::FileStorage& fSettings);
         void readCamera2(cv::FileStorage& fSettings);
+        void readCamera3(cv::FileStorage& fSettings);
+        void readCamera4(cv::FileStorage& fSettings);
         void readImageInfo(cv::FileStorage& fSettings);
         void readIMU(cv::FileStorage& fSettings);
         void readRGBD(cv::FileStorage& fSettings);
@@ -162,10 +180,9 @@ namespace ORB_SLAM3 {
         /*
          * Visual stuff
          */
-        GeometricCamera* calibration1_, *calibration2_;   //Camera calibration
-        GeometricCamera* originalCalib1_, *originalCalib2_;
-        std::vector<float> vPinHoleDistorsion1_, vPinHoleDistorsion2_;
-
+        GeometricCamera* calibration1_, *calibration2_, *calibration3_, *calibration4_;
+        GeometricCamera* originalCalib1_, *originalCalib2_, *originalCalib3_, *originalCalib4_;
+        std::vector<float> vPinHoleDistorsion1_, vPinHoleDistorsion2_, vPinHoleDistorsion3_, vPinHoleDistorsion4_;
         cv::Size originalImSize_, newImSize_;
         float fps_;
         bool bRGB_;
@@ -174,7 +191,8 @@ namespace ORB_SLAM3 {
         bool bNeedToRectify_;
         bool bNeedToResize1_, bNeedToResize2_;
 
-        Sophus::SE3f Tlr_;
+        Sophus::SE3f Tlr_,Tsl_,Tsr_;
+        Sophus::SE3f Tlsl_,Tlsr_;
         float thDepth_;
         float bf_, b_;
 
@@ -190,7 +208,7 @@ namespace ORB_SLAM3 {
         float noiseGyro_, noiseAcc_;
         float gyroWalk_, accWalk_;
         float imuFrequency_;
-        Sophus::SE3f Tbc_;
+        Sophus::SE3f Tbc_, Tbcl_, Tbcr_;
         bool insertKFsWhenLost_;
 
         /*

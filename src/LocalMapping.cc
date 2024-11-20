@@ -16,6 +16,10 @@
 * If not, see <http://www.gnu.org/licenses/>.
 */
 
+/******************************************************************************
+* Modified by:   Yifu Wang                                                    *
+* Contact:  1fwang927@gmail.com                                               *
+******************************************************************************/
 
 #include "LocalMapping.h"
 #include "LoopClosing.h"
@@ -135,14 +139,15 @@ void LocalMapping::Run()
                             mTinit += mpCurrentKeyFrame->mTimeStamp - mpCurrentKeyFrame->mPrevKF->mTimeStamp;
                         if(!mpCurrentKeyFrame->GetMap()->GetIniertialBA2())
                         {
-                            if((mTinit<10.f) && (dist<0.02))
-                            {
-                                cout << "Not enough motion for initializing. Reseting..." << endl;
-                                unique_lock<mutex> lock(mMutexReset);
-                                mbResetRequestedActiveMap = true;
-                                mpMapToReset = mpCurrentKeyFrame->GetMap();
-                                mbBadImu = true;
-                            }
+                            // TODO: might be to strict for initialization
+                            // if((mTinit<10.f) && (dist<0.02))
+                            // {
+                            //     cout << "Not enough motion for initializing. Reseting..." << endl;
+                            //     unique_lock<mutex> lock(mMutexReset);
+                            //     mbResetRequestedActiveMap = true;
+                            //     mpMapToReset = mpCurrentKeyFrame->GetMap();
+                            //     mbBadImu = true;
+                            // }
                         }
 
                         bool bLarge = ((mpTracker->GetMatchesInliers()>75)&&mbMonocular)||((mpTracker->GetMatchesInliers()>100)&&!mbMonocular);
@@ -485,25 +490,39 @@ void LocalMapping::CreateNewMapPoints()
             const int &idx1 = vMatchedIndices[ikp].first;
             const int &idx2 = vMatchedIndices[ikp].second;
 
-            const cv::KeyPoint &kp1 = (mpCurrentKeyFrame -> NLeft == -1) ? mpCurrentKeyFrame->mvKeysUn[idx1]
-                                                                         : (idx1 < mpCurrentKeyFrame -> NLeft) ? mpCurrentKeyFrame -> mvKeys[idx1]
-                                                                                                               : mpCurrentKeyFrame -> mvKeysRight[idx1 - mpCurrentKeyFrame -> NLeft];
+            const cv::KeyPoint &kp1 = (mpCurrentKeyFrame->NLeft == -1) ? mpCurrentKeyFrame->mvKeysUn[idx1]
+                         : (idx1 < mpCurrentKeyFrame->NLeft) ? mpCurrentKeyFrame->mvKeys[idx1]
+                         : (idx1 < mpCurrentKeyFrame->NLeft + mpCurrentKeyFrame->NRight) ? mpCurrentKeyFrame->mvKeysRight[idx1 - mpCurrentKeyFrame->NLeft]
+                         : (idx1 < mpCurrentKeyFrame->NLeft + mpCurrentKeyFrame->NRight + mpCurrentKeyFrame->NSideLeft) ? mpCurrentKeyFrame->mvKeysSideLeft[idx1 - mpCurrentKeyFrame->NLeft - mpCurrentKeyFrame->NRight]
+                         : mpCurrentKeyFrame->mvKeysSideRight[idx1 - mpCurrentKeyFrame->NLeft - mpCurrentKeyFrame->NRight - mpCurrentKeyFrame->NSideLeft];
+
+            int cameraId1 = (mpCurrentKeyFrame->NLeft == -1) ? 0
+                            : (idx1 < mpCurrentKeyFrame->NLeft) ? 0
+                            : (idx1 < mpCurrentKeyFrame->NLeft + mpCurrentKeyFrame->NRight) ? 1
+                            : (idx1 < mpCurrentKeyFrame->NLeft + mpCurrentKeyFrame->NRight + mpCurrentKeyFrame->NSideLeft) ? 2
+                            : 3;
+
             const float kp1_ur=mpCurrentKeyFrame->mvuRight[idx1];
             bool bStereo1 = (!mpCurrentKeyFrame->mpCamera2 && kp1_ur>=0);
-            const bool bRight1 = (mpCurrentKeyFrame -> NLeft == -1 || idx1 < mpCurrentKeyFrame -> NLeft) ? false
-                                                                                                         : true;
+            const cv::KeyPoint &kp2 = (pKF2->NLeft == -1) ? pKF2->mvKeysUn[idx2]
+                         : (idx2 < pKF2->NLeft) ? pKF2->mvKeys[idx2]
+                         : (idx2 < pKF2->NLeft + pKF2->NRight) ? pKF2->mvKeysRight[idx2 - pKF2->NLeft]
+                         : (idx2 < pKF2->NLeft + pKF2->NRight + pKF2->NSideLeft) ? pKF2->mvKeysSideLeft[idx2 - pKF2->NLeft - pKF2->NRight]
+                         : pKF2->mvKeysSideRight[idx2 - pKF2->NLeft - pKF2->NRight - pKF2->NSideLeft];
 
-            const cv::KeyPoint &kp2 = (pKF2 -> NLeft == -1) ? pKF2->mvKeysUn[idx2]
-                                                            : (idx2 < pKF2 -> NLeft) ? pKF2 -> mvKeys[idx2]
-                                                                                     : pKF2 -> mvKeysRight[idx2 - pKF2 -> NLeft];
+            int cameraId2 = (pKF2->NLeft == -1) ? 0
+                            : (idx2 < pKF2->NLeft) ? 0
+                            : (idx2 < pKF2->NLeft + pKF2->NRight) ? 1
+                            : (idx2 < pKF2->NLeft + pKF2->NRight + pKF2->NSideLeft) ? 2
+                            : 3;
 
             const float kp2_ur = pKF2->mvuRight[idx2];
             bool bStereo2 = (!pKF2->mpCamera2 && kp2_ur>=0);
-            const bool bRight2 = (pKF2 -> NLeft == -1 || idx2 < pKF2 -> NLeft) ? false
-                                                                               : true;
 
-            if(mpCurrentKeyFrame->mpCamera2 && pKF2->mpCamera2){
-                if(bRight1 && bRight2){
+            if(mpCurrentKeyFrame->mpCamera2 && pKF2->mpCamera2)
+            {
+                if (cameraId1 == 1 && cameraId2 == 1)
+                {
                     sophTcw1 = mpCurrentKeyFrame->GetRightPose();
                     Ow1 = mpCurrentKeyFrame->GetRightCameraCenter();
 
@@ -513,7 +532,8 @@ void LocalMapping::CreateNewMapPoints()
                     pCamera1 = mpCurrentKeyFrame->mpCamera2;
                     pCamera2 = pKF2->mpCamera2;
                 }
-                else if(bRight1 && !bRight2){
+                else if (cameraId1 == 1 && cameraId2 == 0)
+                {
                     sophTcw1 = mpCurrentKeyFrame->GetRightPose();
                     Ow1 = mpCurrentKeyFrame->GetRightCameraCenter();
 
@@ -523,7 +543,8 @@ void LocalMapping::CreateNewMapPoints()
                     pCamera1 = mpCurrentKeyFrame->mpCamera2;
                     pCamera2 = pKF2->mpCamera;
                 }
-                else if(!bRight1 && bRight2){
+                else if (cameraId1 == 0 && cameraId2 == 1)
+                {
                     sophTcw1 = mpCurrentKeyFrame->GetPose();
                     Ow1 = mpCurrentKeyFrame->GetCameraCenter();
 
@@ -533,7 +554,8 @@ void LocalMapping::CreateNewMapPoints()
                     pCamera1 = mpCurrentKeyFrame->mpCamera;
                     pCamera2 = pKF2->mpCamera2;
                 }
-                else{
+                else if (cameraId1 == 0 && cameraId2 == 0)
+                {
                     sophTcw1 = mpCurrentKeyFrame->GetPose();
                     Ow1 = mpCurrentKeyFrame->GetCameraCenter();
 
@@ -543,6 +565,77 @@ void LocalMapping::CreateNewMapPoints()
                     pCamera1 = mpCurrentKeyFrame->mpCamera;
                     pCamera2 = pKF2->mpCamera;
                 }
+
+                if (mpCurrentKeyFrame->mpCamera3 && pKF2->mpCamera3 && mpCurrentKeyFrame->mpCamera4 && pKF2->mpCamera4)
+                {
+                    if (cameraId1 == 0 && cameraId2 == 2)
+                    {
+                        sophTcw1 = mpCurrentKeyFrame->GetPose();
+                        Ow1 = mpCurrentKeyFrame->GetCameraCenter();
+
+                        sophTcw2 = pKF2->GetSideLeftPose();
+                        Ow2 = pKF2->GetSideLeftCameraCenter();
+
+                        pCamera1 = mpCurrentKeyFrame->mpCamera;
+                        pCamera2 = pKF2->mpCamera3;
+                    }
+                    else if (cameraId1 == 2 && cameraId2 == 0)
+                    {
+                        sophTcw1 = mpCurrentKeyFrame->GetSideLeftPose();
+                        Ow1 = mpCurrentKeyFrame->GetSideLeftCameraCenter();
+
+                        sophTcw2 = pKF2->GetPose();
+                        Ow2 = pKF2->GetCameraCenter();
+
+                        pCamera1 = mpCurrentKeyFrame->mpCamera3;
+                        pCamera2 = pKF2->mpCamera;
+                    }
+                    else if (cameraId1 == 2 && cameraId2 == 2)
+                    {
+                        sophTcw1 = mpCurrentKeyFrame->GetSideLeftPose();
+                        Ow1 = mpCurrentKeyFrame->GetSideLeftCameraCenter();
+
+                        sophTcw2 = pKF2->GetSideLeftPose();
+                        Ow2 = pKF2->GetSideLeftCameraCenter();
+
+                        pCamera1 = mpCurrentKeyFrame->mpCamera3;
+                        pCamera2 = pKF2->mpCamera3;
+                    }
+                    else if (cameraId1 == 1 && cameraId2 == 3)
+                    {
+                        sophTcw1 = mpCurrentKeyFrame->GetRightPose();
+                        Ow1 = mpCurrentKeyFrame->GetRightCameraCenter();
+
+                        sophTcw2 = pKF2->GetSideRightPose();
+                        Ow2 = pKF2->GetSideRightCameraCenter();
+
+                        pCamera1 = mpCurrentKeyFrame->mpCamera2;
+                        pCamera2 = pKF2->mpCamera4;
+                    }
+                    else if (cameraId1 == 3 && cameraId2 == 1)
+                    {
+                        sophTcw1 = mpCurrentKeyFrame->GetSideRightPose();
+                        Ow1 = mpCurrentKeyFrame->GetSideRightCameraCenter();
+
+                        sophTcw2 = pKF2->GetRightPose();
+                        Ow2 = pKF2->GetRightCameraCenter();
+
+                        pCamera1 = mpCurrentKeyFrame->mpCamera4;
+                        pCamera2 = pKF2->mpCamera2;
+                    }
+                    else if (cameraId1 == 3 && cameraId2 == 3)
+                    {
+                        sophTcw1 = mpCurrentKeyFrame->GetSideRightPose();
+                        Ow1 = mpCurrentKeyFrame->GetSideRightCameraCenter();
+
+                        sophTcw2 = pKF2->GetSideRightPose();
+                        Ow2 = pKF2->GetSideRightCameraCenter();
+
+                        pCamera1 = mpCurrentKeyFrame->mpCamera4;
+                        pCamera2 = pKF2->mpCamera4;
+                    }
+                }
+
                 eigTcw1 = sophTcw1.matrix3x4();
                 Rcw1 = eigTcw1.block<3,3>(0,0);
                 Rwc1 = Rcw1.transpose();
@@ -769,8 +862,15 @@ void LocalMapping::SearchInNeighbors()
     {
         KeyFrame* pKFi = *vit;
 
-        matcher.Fuse(pKFi,vpMapPointMatches);
-        if(pKFi->NLeft != -1) matcher.Fuse(pKFi,vpMapPointMatches,true);
+        matcher.Fuse(pKFi, vpMapPointMatches, 3, 0);
+        if (pKFi->NLeft != -1) {
+            matcher.Fuse(pKFi, vpMapPointMatches, 3, 1);
+        }
+        if (pKFi->NSideLeft != -1 || pKFi->NSideRight != -1)
+        {
+            matcher.Fuse(pKFi, vpMapPointMatches, 3, 2);
+            matcher.Fuse(pKFi, vpMapPointMatches, 3, 3);
+        }
     }
 
 
@@ -799,9 +899,14 @@ void LocalMapping::SearchInNeighbors()
         }
     }
 
-    matcher.Fuse(mpCurrentKeyFrame,vpFuseCandidates);
-    if(mpCurrentKeyFrame->NLeft != -1) matcher.Fuse(mpCurrentKeyFrame,vpFuseCandidates,true);
-
+    matcher.Fuse(mpCurrentKeyFrame, vpFuseCandidates, 3, 0);
+    if (mpCurrentKeyFrame->NLeft != -1)
+        matcher.Fuse(mpCurrentKeyFrame, vpFuseCandidates, 3, 1);
+    if (mpCurrentKeyFrame->NSideLeft != -1 || mpCurrentKeyFrame->NSideRight != -1)
+    {
+        matcher.Fuse(mpCurrentKeyFrame, vpFuseCandidates, 3, 2);
+        matcher.Fuse(mpCurrentKeyFrame, vpFuseCandidates, 3, 3);
+    }
 
     // Update points
     vpMapPointMatches = mpCurrentKeyFrame->GetMapPointMatches();
@@ -965,18 +1070,22 @@ void LocalMapping::KeyFrameCulling()
                     nMPs++;
                     if(pMP->Observations()>thObs)
                     {
-                        const int &scaleLevel = (pKF -> NLeft == -1) ? pKF->mvKeysUn[i].octave
-                                                                     : (i < pKF -> NLeft) ? pKF -> mvKeys[i].octave
-                                                                                          : pKF -> mvKeysRight[i].octave;
-                        const map<KeyFrame*, tuple<int,int>> observations = pMP->GetObservations();
+                        const int &scaleLevel = (pKF->NLeft == -1) ? pKF->mvKeysUn[i].octave
+                                              : (i < pKF->NLeft) ? pKF->mvKeys[i].octave
+                                              : (i < pKF->NLeft + pKF->NRight) ? pKF->mvKeysRight[i - pKF->NLeft].octave
+                                              : (i < pKF->NLeft + pKF->NRight + pKF->NSideLeft) ? pKF->mvKeysSideLeft[i - pKF->NLeft - pKF->NRight].octave
+                                              : pKF->mvKeysSideRight[i - pKF->NLeft - pKF->NRight - pKF->NSideLeft].octave;
+
+                        const map<KeyFrame*, tuple<int,int,int,int>> observations = pMP->GetObservations();
                         int nObs=0;
-                        for(map<KeyFrame*, tuple<int,int>>::const_iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
+                        for(map<KeyFrame*, tuple<int,int,int,int>>::const_iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
                         {
                             KeyFrame* pKFi = mit->first;
                             if(pKFi==pKF)
                                 continue;
-                            tuple<int,int> indexes = mit->second;
+                            tuple<int,int,int,int> indexes = mit->second;
                             int leftIndex = get<0>(indexes), rightIndex = get<1>(indexes);
+                            int sideleftIndex = get<2>(indexes), siderightIndex = get<3>(indexes);
                             int scaleLeveli = -1;
                             if(pKFi -> NLeft == -1)
                                 scaleLeveli = pKFi->mvKeysUn[leftIndex].octave;
@@ -988,6 +1097,18 @@ void LocalMapping::KeyFrameCulling()
                                     int rightLevel = pKFi->mvKeysRight[rightIndex - pKFi->NLeft].octave;
                                     scaleLeveli = (scaleLeveli == -1 || scaleLeveli > rightLevel) ? rightLevel
                                                                                                   : scaleLeveli;
+                                }
+
+                                if (sideleftIndex != -1) {
+                                    int sideleftLevel = pKFi->mvKeysSideLeft[sideleftIndex - pKFi->NLeft - pKFi->NRight].octave;
+                                    scaleLeveli = (scaleLeveli == -1 || scaleLeveli > sideleftLevel) ? sideleftLevel
+                                                                                                     : scaleLeveli;
+                                }
+
+                                if (siderightIndex != -1) {
+                                    int siderightLevel = pKFi->mvKeysSideRight[siderightIndex - pKFi->NLeft - pKFi->NRight - pKFi->NSideLeft].octave;
+                                    scaleLeveli = (scaleLeveli == -1 || scaleLeveli > siderightLevel) ? siderightLevel
+                                                                                                      : scaleLeveli;
                                 }
                             }
 

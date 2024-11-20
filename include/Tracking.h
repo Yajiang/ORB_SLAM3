@@ -16,6 +16,10 @@
 * If not, see <http://www.gnu.org/licenses/>.
 */
 
+/******************************************************************************
+* Modified by:   Yifu Wang                                                    *
+* Contact:  1fwang927@gmail.com                                               *
+******************************************************************************/
 
 #ifndef TRACKING_H
 #define TRACKING_H
@@ -72,6 +76,7 @@ public:
     Sophus::SE3f GrabImageStereo(const cv::Mat &imRectLeft,const cv::Mat &imRectRight, const double &timestamp, string filename);
     Sophus::SE3f GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const double &timestamp, string filename);
     Sophus::SE3f GrabImageMonocular(const cv::Mat &im, const double &timestamp, string filename);
+    Sophus::SE3f GrabImageMulti(const cv::Mat &imRectLeft,const cv::Mat &imRectRight, const cv::Mat &imRectSideLeft, const cv::Mat &imRectSideRight, const double &timestamp, string filename);
 
     void GrabImuData(const IMU::Point &imuMeasurement);
 
@@ -164,6 +169,8 @@ public:
     void Reset(bool bLocMap = false);
     void ResetActiveMap(bool bLocMap = false);
 
+    bool mbleft{true}, mbright{true}, mbsideleft{true}, mbsideright{true};
+
     float mMeanTrack;
     bool mbInitWith3KFs;
     double t0; // time-stamp of first read frame
@@ -199,6 +206,9 @@ protected:
 
     // Map initialization for stereo and RGB-D
     void StereoInitialization();
+
+    // Map initialization for Multi fisheye
+    void MultiInitialization();
 
     // Map initialization for monocular
     void MonocularInitialization();
@@ -259,6 +269,7 @@ protected:
 
     //ORB
     ORBextractor* mpORBextractorLeft, *mpORBextractorRight;
+    ORBextractor* mpORBextractorSideLeft, *mpORBextractorSideRight;
     ORBextractor* mpIniORBextractor;
 
     //BoW
@@ -350,10 +361,13 @@ protected:
     double mTime_NewKF_Dec;
 
     GeometricCamera* mpCamera, *mpCamera2;
+    GeometricCamera* mpCamera3, *mpCamera4;
 
     int initID, lastID;
 
     Sophus::SE3f mTlr;
+    Sophus::SE3f mTlsl;
+    Sophus::SE3f mTlsr;
 
     void newParameterLoader(Settings* settings);
 
@@ -367,7 +381,7 @@ protected:
 #endif
 
 public:
-    cv::Mat mImRight;
+    cv::Mat mImRight, mImSideLeft, mImSideRight;
 };
 
 } //namespace ORB_SLAM

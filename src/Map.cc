@@ -16,6 +16,10 @@
 * If not, see <http://www.gnu.org/licenses/>.
 */
 
+/******************************************************************************
+* Modified by:   Yifu Wang                                                    *
+* Contact:  1fwang927@gmail.com                                               *
+******************************************************************************/
 
 #include "Map.h"
 
@@ -359,7 +363,10 @@ void Map::SetLastMapChange(int currentChangeId)
 void Map::PreSave(std::set<GeometricCamera*> &spCams)
 {
     int nMPWithoutObs = 0;
-    for(MapPoint* pMPi : mspMapPoints)
+    std::set<MapPoint*> _mspMapPoints1;
+    _mspMapPoints1.insert(mspMapPoints.begin(), mspMapPoints.end());
+
+    for(MapPoint* pMPi : _mspMapPoints1)
     {
         if(!pMPi || pMPi->isBad())
             continue;
@@ -368,8 +375,8 @@ void Map::PreSave(std::set<GeometricCamera*> &spCams)
         {
             nMPWithoutObs++;
         }
-        map<KeyFrame*, std::tuple<int,int>> mpObs = pMPi->GetObservations();
-        for(map<KeyFrame*, std::tuple<int,int>>::iterator it= mpObs.begin(), end=mpObs.end(); it!=end; ++it)
+        map<KeyFrame*, std::tuple<int,int,int,int>> mpObs = pMPi->GetObservations();
+        for(map<KeyFrame*, std::tuple<int,int,int,int>>::iterator it= mpObs.begin(), end=mpObs.end(); it!=end; ++it)
         {
             if(it->first->GetMap() != this || it->first->isBad())
             {
@@ -390,7 +397,10 @@ void Map::PreSave(std::set<GeometricCamera*> &spCams)
 
     // Backup of MapPoints
     mvpBackupMapPoints.clear();
-    for(MapPoint* pMPi : mspMapPoints)
+    std::set<MapPoint*> _mspMapPoints2;
+    _mspMapPoints2.insert(mspMapPoints.begin(), mspMapPoints.end());
+
+    for(MapPoint* pMPi : _mspMapPoints2)
     {
         if(!pMPi || pMPi->isBad())
             continue;

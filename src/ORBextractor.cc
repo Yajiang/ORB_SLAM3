@@ -51,6 +51,10 @@
 *
 */
 
+/******************************************************************************
+* Modified by:   Yifu Wang                                                    *
+* Contact:  1fwang927@gmail.com                                               *
+******************************************************************************/
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -1105,8 +1109,10 @@ namespace ORB_SLAM3
         int nkeypoints = 0;
         for (int level = 0; level < nlevels; ++level)
             nkeypoints += (int)allKeypoints[level].size();
-        if( nkeypoints == 0 )
-            _descriptors.release();
+        if( nkeypoints == 0 ){
+            _descriptors.create(0, 32, CV_8U);
+            descriptors = _descriptors.getMat();
+        }
         else
         {
             _descriptors.create(nkeypoints, 32, CV_8U);

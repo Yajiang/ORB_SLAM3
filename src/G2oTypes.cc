@@ -16,6 +16,11 @@
 * If not, see <http://www.gnu.org/licenses/>.
 */
 
+/******************************************************************************
+* Modified by:   Yifu Wang                                                    *
+* Contact:  1fwang927@gmail.com                                               *
+******************************************************************************/
+
 #include "G2oTypes.h"
 #include "ImuTypes.h"
 #include "Converter.h"
@@ -30,7 +35,9 @@ ImuCamPose::ImuCamPose(KeyFrame *pKF):its(0)
 
     // Load camera poses
     int num_cams;
-    if(pKF->mpCamera2)
+    if(pKF->mpCamera4)
+        num_cams=4;
+    else if(pKF->mpCamera2)
         num_cams=2;
     else
         num_cams=1;
@@ -65,6 +72,27 @@ ImuCamPose::ImuCamPose(KeyFrame *pKF):its(0)
         pCamera[1] = pKF->mpCamera2;
     }
 
+    if(num_cams>3)
+    {
+        Eigen::Matrix4d Tsll = pKF->GetRelativePoseTsll().matrix().cast<double>();
+        Rcw[2] = Tsll.block<3,3>(0,0) * Rcw[0];
+        tcw[2] = Tsll.block<3,3>(0,0) * tcw[0] + Tsll.block<3,1>(0,3);
+        tcb[2] = Tsll.block<3,3>(0,0) * tcb[0] + Tsll.block<3,1>(0,3);
+        Rcb[2] = Tsll.block<3,3>(0,0) * Rcb[0];
+        Rbc[2] = Rcb[2].transpose();
+        tbc[2] = -Rbc[2] * tcb[2];
+        pCamera[2] = pKF->mpCamera3;
+
+        Eigen::Matrix4d Tsrl = pKF->GetRelativePoseTsrl().matrix().cast<double>();
+        Rcw[3] = Tsrl.block<3,3>(0,0) * Rcw[0];
+        tcw[3] = Tsrl.block<3,3>(0,0) * tcw[0] + Tsrl.block<3,1>(0,3);
+        tcb[3] = Tsrl.block<3,3>(0,0) * tcb[0] + Tsrl.block<3,1>(0,3);
+        Rcb[3] = Tsrl.block<3,3>(0,0) * Rcb[0];
+        Rbc[3] = Rcb[3].transpose();
+        tbc[3] = -Rbc[3] * tcb[3];
+        pCamera[3] = pKF->mpCamera4;
+    }
+
     // For posegraph 4DoF
     Rwb0 = Rwb;
     DR.setIdentity();
@@ -78,7 +106,9 @@ ImuCamPose::ImuCamPose(Frame *pF):its(0)
 
     // Load camera poses
     int num_cams;
-    if(pF->mpCamera2)
+    if(pF->mpCamera4)
+        num_cams=4;
+    else if(pF->mpCamera2)
         num_cams=2;
     else
         num_cams=1;
@@ -111,6 +141,27 @@ ImuCamPose::ImuCamPose(Frame *pF):its(0)
         Rbc[1] = Rcb[1].transpose();
         tbc[1] = -Rbc[1] * tcb[1];
         pCamera[1] = pF->mpCamera2;
+    }
+
+    if(num_cams>3)
+    {
+        Eigen::Matrix4d Tsll = pF->GetRelativePoseTsll().matrix().cast<double>();
+        Rcw[2] = Tsll.block<3,3>(0,0) * Rcw[0];
+        tcw[2] = Tsll.block<3,3>(0,0) * tcw[0] + Tsll.block<3,1>(0,3);
+        tcb[2] = Tsll.block<3,3>(0,0) * tcb[0] + Tsll.block<3,1>(0,3);
+        Rcb[2] = Tsll.block<3,3>(0,0) * Rcb[0];
+        Rbc[2] = Rcb[2].transpose();
+        tbc[2] = -Rbc[2] * tcb[2];
+        pCamera[2] = pF->mpCamera3;
+
+        Eigen::Matrix4d Tsrl = pF->GetRelativePoseTsrl().matrix().cast<double>();
+        Rcw[3] = Tsrl.block<3,3>(0,0) * Rcw[0];
+        tcw[3] = Tsrl.block<3,3>(0,0) * tcw[0] + Tsrl.block<3,1>(0,3);
+        tcb[3] = Tsrl.block<3,3>(0,0) * tcb[0] + Tsrl.block<3,1>(0,3);
+        Rcb[3] = Tsrl.block<3,3>(0,0) * Rcb[0];
+        Rbc[3] = Rcb[3].transpose();
+        tbc[3] = -Rbc[3] * tcb[3];
+        pCamera[3] = pF->mpCamera4;
     }
 
     // For posegraph 4DoF

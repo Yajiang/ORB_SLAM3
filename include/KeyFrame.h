@@ -16,6 +16,10 @@
 * If not, see <http://www.gnu.org/licenses/>.
 */
 
+/******************************************************************************
+* Modified by:   Yifu Wang                                                    *
+* Contact:  1fwang927@gmail.com                                               *
+******************************************************************************/
 
 #ifndef KEYFRAME_H
 #define KEYFRAME_H
@@ -123,6 +127,9 @@ class KeyFrame
         // KeyPoints
         serializeVectorKeyPoints<Archive>(ar, mvKeys, version);
         serializeVectorKeyPoints<Archive>(ar, mvKeysUn, version);
+        serializeVectorKeyPoints<Archive>(ar, mvKeysRight, version);
+        serializeVectorKeyPoints<Archive>(ar, mvKeysSideLeft, version);
+        serializeVectorKeyPoints<Archive>(ar, mvKeysSideRight, version);
         ar & const_cast<vector<float>& >(mvuRight);
         ar & const_cast<vector<float>& >(mvDepth);
         serializeMatrix<Archive>(ar,mDescriptors,version);
@@ -170,15 +177,29 @@ class KeyFrame
         // Camera variables
         ar & mnBackupIdCamera;
         ar & mnBackupIdCamera2;
+        ar & mnBackupIdCamera3;
+        ar & mnBackupIdCamera4;
 
         // Fisheye variables
         ar & mvLeftToRightMatch;
         ar & mvRightToLeftMatch;
         ar & const_cast<int&>(NLeft);
         ar & const_cast<int&>(NRight);
+        ar & const_cast<int&>(NSideLeft);
+        ar & const_cast<int&>(NSideRight);
         serializeSophusSE3<Archive>(ar, mTlr, version);
+        serializeSophusSE3<Archive>(ar, mTrl, version);
+        serializeSophusSE3<Archive>(ar, mTlsl, version);
+        serializeSophusSE3<Archive>(ar, mTlsr, version);
+        serializeSophusSE3<Archive>(ar, mTsll, version);
+        serializeSophusSE3<Archive>(ar, mTsrl, version);
         serializeVectorKeyPoints<Archive>(ar, mvKeysRight, version);
+        serializeVectorKeyPoints<Archive>(ar, mvKeysSideLeft, version);
+        serializeVectorKeyPoints<Archive>(ar, mvKeysSideRight, version);
         ar & mGridRight;
+        ar & mGridSideLeft;
+        ar & mGridSideRight;
+
 
         // Inertial variables
         ar & mImuBias;
@@ -190,6 +211,10 @@ class KeyFrame
         ar & boost::serialization::make_array(mVw.data(), mVw.size());
         ar & boost::serialization::make_array(mOwb.data(), mOwb.size());
         ar & mbHasVelocity;
+        ar & mpCamera;
+        ar & mpCamera2;
+        ar & mpCamera3;
+        ar & mpCamera4;
     }
 
 public:
@@ -201,16 +226,16 @@ public:
     void SetPose(const Sophus::SE3f &Tcw);
     void SetVelocity(const Eigen::Vector3f &Vw_);
 
-    Sophus::SE3f GetPose();
+    Sophus::SE3f GetPose(const int cameraID=0);
 
-    Sophus::SE3f GetPoseInverse();
+    Sophus::SE3f GetPoseInverse(const int cameraID=0);
     Eigen::Vector3f GetCameraCenter();
 
     Eigen::Vector3f GetImuPosition();
     Eigen::Matrix3f GetImuRotation();
     Sophus::SE3f GetImuPose();
-    Eigen::Matrix3f GetRotation();
-    Eigen::Vector3f GetTranslation();
+    Eigen::Matrix3f GetRotation(const int cameraID=0);
+    Eigen::Vector3f GetTranslation(const int cameraID=0);
     Eigen::Vector3f GetVelocity();
     bool isVelocitySet();
 
@@ -258,7 +283,7 @@ public:
     MapPoint* GetMapPoint(const size_t &idx);
 
     // KeyPoint functions
-    std::vector<size_t> GetFeaturesInArea(const float &x, const float  &y, const float  &r, const bool bRight = false) const;
+    std::vector<size_t> GetFeaturesInArea(const float &x, const float  &y, const float  &r, const int cameraID = 0) const;
     bool UnprojectStereo(int i, Eigen::Vector3f &x3D);
 
     // Image
@@ -442,6 +467,10 @@ protected:
     Sophus::SE3<float> mTlr;
     Sophus::SE3<float> mTrl;
 
+    //Transformation matrix between cameras in multi fisheye
+    Sophus::SE3<float> mTlsl, mTlsr;
+    Sophus::SE3<float> mTsll, mTsrl;
+
     // Imu bias
     IMU::Bias mImuBias;
 
@@ -491,6 +520,7 @@ protected:
 
     // Backup for Cameras
     unsigned int mnBackupIdCamera, mnBackupIdCamera2;
+    unsigned int mnBackupIdCamera3, mnBackupIdCamera4;
 
     // Calibration
     Eigen::Matrix3f mK_;
@@ -503,6 +533,7 @@ protected:
 
 public:
     GeometricCamera* mpCamera, *mpCamera2;
+    GeometricCamera* mpCamera3, *mpCamera4;
 
     //Indexes of stereo observations correspondences
     std::vector<int> mvLeftToRightMatch, mvRightToLeftMatch;
@@ -510,19 +541,46 @@ public:
     Sophus::SE3f GetRelativePoseTrl();
     Sophus::SE3f GetRelativePoseTlr();
 
+    Sophus::SE3f GetRelativePoseTsll();
+    Sophus::SE3f GetRelativePoseTlsl();
+
+    Sophus::SE3f GetRelativePoseTsrl();
+    Sophus::SE3f GetRelativePoseTlsr();
+
     //KeyPoints in the right image (for stereo fisheye, coordinates are needed)
     const std::vector<cv::KeyPoint> mvKeysRight;
+    const std::vector<cv::KeyPoint> mvKeysSideLeft, mvKeysSideRight;
 
     const int NLeft, NRight;
+    const int NSideLeft, NSideRight;
 
     std::vector< std::vector <std::vector<size_t> > > mGridRight;
+    std::vector< std::vector <std::vector<size_t> > > mGridSideLeft, mGridSideRight;
 
     Sophus::SE3<float> GetRightPose();
     Sophus::SE3<float> GetRightPoseInverse();
 
+    Sophus::SE3<float> GetSideLeftPose();
+    Sophus::SE3<float> GetSideLeftPoseInverse();
+
+    Sophus::SE3<float> GetSideRightPose();
+    Sophus::SE3<float> GetSideRightPoseInverse();
+
     Eigen::Vector3f GetRightCameraCenter();
     Eigen::Matrix<float,3,3> GetRightRotation();
     Eigen::Vector3f GetRightTranslation();
+
+    Eigen::Vector3f GetSideLeftCameraCenter();
+    Eigen::Matrix<float,3,3> GetSideLeftRotation();
+    Eigen::Vector3f GetSideLeftTranslation();
+
+    Eigen::Vector3f GetSideRightCameraCenter();
+    Eigen::Matrix<float,3,3> GetSideRightRotation();
+    Eigen::Vector3f GetSideRightTranslation();
+
+    int kpIdxToCamIdx(const int kpIdx) const;
+    const cv::KeyPoint &GetKey(const int kpIdx) const;
+    GeometricCamera* GetCamera(const int cameraId);
 
     void PrintPointDistribution(){
         int left = 0, right = 0;

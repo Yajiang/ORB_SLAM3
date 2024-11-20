@@ -16,6 +16,10 @@
 * If not, see <http://www.gnu.org/licenses/>.
 */
 
+/******************************************************************************
+* Modified by:   Yifu Wang, Alvaro Parra                                                    *
+* Contact:  1fwang927@gmail.com                                               *
+******************************************************************************/
 
 #ifndef SIM3SOLVER_H
 #define SIM3SOLVER_H
@@ -34,7 +38,7 @@ class Sim3Solver
 {
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-    Sim3Solver(KeyFrame* pKF1, KeyFrame* pKF2, const std::vector<MapPoint*> &vpMatched12, const bool bFixScale = true,
+    Sim3Solver(KeyFrame* pKF1, KeyFrame* pKF2, const std::vector<MapPoint*> &vpMatched12, int &cameraID1, int &cameraID2, const bool bFixScale = true,
                const vector<KeyFrame*> vpKeyFrameMatchedMP = vector<KeyFrame*>());
 
     void SetRansacParameters(double probability = 0.99, int minInliers = 6 , int maxIterations = 300);
@@ -48,6 +52,7 @@ public:
     Eigen::Matrix3f GetEstimatedRotation();
     Eigen::Vector3f GetEstimatedTranslation();
     float GetEstimatedScale();
+    bool mState = true;
 
 protected:
 

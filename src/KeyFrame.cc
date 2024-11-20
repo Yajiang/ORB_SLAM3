@@ -16,6 +16,11 @@
 * If not, see <http://www.gnu.org/licenses/>.
 */
 
+/******************************************************************************
+* Modified by:   Yifu Wang                                                    *
+* Contact:  1fwang927@gmail.com                                               *
+******************************************************************************/
+
 #include "KeyFrame.h"
 #include "Converter.h"
 #include "ImuTypes.h"
@@ -37,7 +42,7 @@ KeyFrame::KeyFrame():
         mfLogScaleFactor(0), mvScaleFactors(0), mvLevelSigma2(0), mvInvLevelSigma2(0), mnMinX(0), mnMinY(0), mnMaxX(0),
         mnMaxY(0), mPrevKF(static_cast<KeyFrame*>(NULL)), mNextKF(static_cast<KeyFrame*>(NULL)), mbFirstConnection(true), mpParent(NULL), mbNotErase(false),
         mbToBeErased(false), mbBad(false), mHalfBaseline(0), mbCurrentPlaceRecognition(false), mnMergeCorrectedForKF(0),
-        NLeft(0),NRight(0), mnNumberOfOpt(0), mbHasVelocity(false)
+        NLeft(0),NRight(0), NSideLeft(0), NSideRight(0), mnNumberOfOpt(0), mbHasVelocity(false)
 {
 
 }
@@ -57,22 +62,42 @@ KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB):
     mImuCalib(F.mImuCalib), mvpMapPoints(F.mvpMapPoints), mpKeyFrameDB(pKFDB),
     mpORBvocabulary(F.mpORBvocabulary), mbFirstConnection(true), mpParent(NULL), mDistCoef(F.mDistCoef), mbNotErase(false), mnDataset(F.mnDataset),
     mbToBeErased(false), mbBad(false), mHalfBaseline(F.mb/2), mpMap(pMap), mbCurrentPlaceRecognition(false), mNameFile(F.mNameFile), mnMergeCorrectedForKF(0),
-    mpCamera(F.mpCamera), mpCamera2(F.mpCamera2),
-    mvLeftToRightMatch(F.mvLeftToRightMatch),mvRightToLeftMatch(F.mvRightToLeftMatch), mTlr(F.GetRelativePoseTlr()),
-    mvKeysRight(F.mvKeysRight), NLeft(F.Nleft), NRight(F.Nright), mTrl(F.GetRelativePoseTrl()), mnNumberOfOpt(0), mbHasVelocity(false)
+    mpCamera(F.mpCamera), mpCamera2(F.mpCamera2), mpCamera3(F.mpCamera3), mpCamera4(F.mpCamera4),
+    mvLeftToRightMatch(F.mvLeftToRightMatch),mvRightToLeftMatch(F.mvRightToLeftMatch),
+    mTlr(F.GetRelativePoseTlr()), mTrl(F.GetRelativePoseTrl()), mTlsl(F.GetRelativePoseTlsl()), mTsll(F.GetRelativePoseTsll()), mTlsr(F.GetRelativePoseTlsr()), mTsrl(F.GetRelativePoseTsrl()),
+    mvKeysRight(F.mvKeysRight), mvKeysSideLeft(F.mvKeysSideLeft), mvKeysSideRight(F.mvKeysSideRight),
+    NLeft(F.Nleft), NRight(F.Nright), NSideLeft(F.Nsideleft), NSideRight(F.Nsideright), mnNumberOfOpt(0), mbHasVelocity(false)
 {
     mnId=nNextId++;
 
     mGrid.resize(mnGridCols);
-    if(F.Nleft != -1)  mGridRight.resize(mnGridCols);
+    if (F.Nleft != -1)
+        mGridRight.resize(mnGridCols);
+    if (F.Nsideleft != -1 || F.Nsideright != -1){
+        mGridSideLeft.resize(mnGridCols);
+        mGridSideRight.resize(mnGridCols);
+    }
+
     for(int i=0; i<mnGridCols;i++)
     {
         mGrid[i].resize(mnGridRows);
-        if(F.Nleft != -1) mGridRight[i].resize(mnGridRows);
-        for(int j=0; j<mnGridRows; j++){
+        if (F.Nleft != -1)
+            mGridRight[i].resize(mnGridRows);
+        if (F.Nsideleft != -1 || F.Nsideright != -1){
+            mGridSideLeft[i].resize(mnGridRows);
+            mGridSideRight[i].resize(mnGridRows);
+        }
+
+        for (int j=0; j <mnGridRows; j++)
+        {
             mGrid[i][j] = F.mGrid[i][j];
-            if(F.Nleft != -1){
+            if (F.Nleft != -1)
                 mGridRight[i][j] = F.mGridRight[i][j];
+
+            if (F.Nsideleft != -1 || F.Nsideright != -1)
+            {
+                mGridSideLeft[i][j] = F.mGridSideLeft[i][j];
+                mGridSideRight[i][j] = F.mGridSideRight[i][j];
             }
         }
     }
@@ -128,16 +153,24 @@ void KeyFrame::SetVelocity(const Eigen::Vector3f &Vw)
     mbHasVelocity = true;
 }
 
-Sophus::SE3f KeyFrame::GetPose()
+Sophus::SE3f KeyFrame::GetPose(const int cameraID)
 {
     unique_lock<mutex> lock(mMutexPose);
-    return mTcw;
+    return (cameraID == 0) ? mTcw
+     : (cameraID == 1) ? mTrl * mTcw
+     : (cameraID == 2) ? mTsll * mTcw
+     : (cameraID == 3) ? mTsrl * mTcw
+     : throw std::invalid_argument("Invalid camera Idx: " + std::to_string(cameraID));
 }
 
-Sophus::SE3f KeyFrame::GetPoseInverse()
+Sophus::SE3f KeyFrame::GetPoseInverse(const int cameraID)
 {
     unique_lock<mutex> lock(mMutexPose);
-    return mTwc;
+    return (cameraID == 0) ? mTwc
+     : (cameraID == 1) ? mTwc * mTlr
+     : (cameraID == 2) ? mTwc * mTlsl
+     : (cameraID == 3) ? mTwc * mTlsr
+     : throw std::invalid_argument("Invalid camera Idx: " + std::to_string(cameraID));
 }
 
 Eigen::Vector3f KeyFrame::GetCameraCenter(){
@@ -163,15 +196,26 @@ Sophus::SE3f KeyFrame::GetImuPose()
     return mTwc * mImuCalib.mTcb;
 }
 
-Eigen::Matrix3f KeyFrame::GetRotation(){
-    unique_lock<mutex> lock(mMutexPose);
-    return mRcw;
-}
-
-Eigen::Vector3f KeyFrame::GetTranslation()
+Eigen::Matrix3f KeyFrame::GetRotation(const int cameraID)
 {
     unique_lock<mutex> lock(mMutexPose);
-    return mTcw.translation();
+    return (cameraID == 0) ? mRcw
+         : (cameraID == 1) ? (mTrl.so3() * mTcw.so3()).matrix()
+         : (cameraID == 2) ? (mTsll.so3() * mTcw.so3()).matrix()
+         : (cameraID == 3) ? (mTsrl.so3() * mTcw.so3()).matrix()
+         : throw std::invalid_argument("Invalid camera Idx: " + std::to_string(cameraID));
+}
+
+Eigen::Vector3f KeyFrame::GetTranslation(const int cameraID)
+{
+    unique_lock<mutex> lock(mMutexPose);
+
+    return (cameraID == 0) ? mTcw.translation()
+     : (cameraID == 1) ? (mTrl * mTcw).translation()
+     : (cameraID == 2) ? (mTsll * mTcw).translation()
+     : (cameraID == 3) ? (mTsrl * mTcw).translation()
+     : throw std::invalid_argument("Invalid camera Idx: " + std::to_string(cameraID));
+
 }
 
 Eigen::Vector3f KeyFrame::GetVelocity()
@@ -308,12 +352,17 @@ void KeyFrame::EraseMapPointMatch(const int &idx)
 
 void KeyFrame::EraseMapPointMatch(MapPoint* pMP)
 {
-    tuple<size_t,size_t> indexes = pMP->GetIndexInKeyFrame(this);
+    tuple<size_t,size_t,size_t,size_t> indexes = pMP->GetIndexInKeyFrame(this);
     size_t leftIndex = get<0>(indexes), rightIndex = get<1>(indexes);
+    size_t sideleftIndex = get<2>(indexes), siderightIndex = get<3>(indexes);
     if(leftIndex != -1)
         mvpMapPoints[leftIndex]=static_cast<MapPoint*>(NULL);
     if(rightIndex != -1)
         mvpMapPoints[rightIndex]=static_cast<MapPoint*>(NULL);
+    if(sideleftIndex != -1)
+        mvpMapPoints[sideleftIndex]=static_cast<MapPoint*>(NULL);
+    if(siderightIndex != -1)
+        mvpMapPoints[siderightIndex]=static_cast<MapPoint*>(NULL);
 }
 
 
@@ -399,9 +448,9 @@ void KeyFrame::UpdateConnections(bool upParent)
         if(pMP->isBad())
             continue;
 
-        map<KeyFrame*,tuple<int,int>> observations = pMP->GetObservations();
+        map<KeyFrame*,tuple<int,int,int,int>> observations = pMP->GetObservations();
 
-        for(map<KeyFrame*,tuple<int,int>>::iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
+        for(map<KeyFrame*,tuple<int,int,int,int>>::iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
         {
             if(mit->first->mnId==mnId || mit->first->isBad() || mit->first->GetMap() != mpMap)
                 continue;
@@ -701,7 +750,7 @@ void KeyFrame::EraseConnection(KeyFrame* pKF)
 }
 
 
-vector<size_t> KeyFrame::GetFeaturesInArea(const float &x, const float &y, const float &r, const bool bRight) const
+vector<size_t> KeyFrame::GetFeaturesInArea(const float &x, const float &y, const float &r, const int cameraID) const
 {
     vector<size_t> vIndices;
     vIndices.reserve(N);
@@ -729,17 +778,31 @@ vector<size_t> KeyFrame::GetFeaturesInArea(const float &x, const float &y, const
     {
         for(int iy = nMinCellY; iy<=nMaxCellY; iy++)
         {
-            const vector<size_t> vCell = (!bRight) ? mGrid[ix][iy] : mGridRight[ix][iy];
+            const vector<size_t> vCell = (cameraID == 0) ? mGrid[ix][iy]
+                            : (cameraID == 1) ? mGridRight[ix][iy]
+                            : (cameraID == 2) ? mGridSideLeft[ix][iy]
+                            : (cameraID == 3) ? mGridSideRight[ix][iy]
+                            : throw std::invalid_argument("Invalid camera Idx: " + std::to_string(cameraID));
+
             for(size_t j=0, jend=vCell.size(); j<jend; j++)
             {
                 const cv::KeyPoint &kpUn = (NLeft == -1) ? mvKeysUn[vCell[j]]
-                                                         : (!bRight) ? mvKeys[vCell[j]]
-                                                                     : mvKeysRight[vCell[j]];
+                          : (cameraID == 0) ? mvKeys[vCell[j]]
+                          : (cameraID == 1) ? mvKeysRight[vCell[j]]
+                          : (cameraID == 2) ? mvKeysSideLeft[vCell[j]]
+                          : (cameraID == 3) ? mvKeysSideRight[vCell[j]]
+                          : throw std::invalid_argument("Invalid camera Idx: " + std::to_string(cameraID));
+
                 const float distx = kpUn.pt.x-x;
                 const float disty = kpUn.pt.y-y;
 
                 if(fabs(distx)<r && fabs(disty)<r)
-                    vIndices.push_back(vCell[j]);
+                    vIndices.push_back((cameraID == 0) ? vCell[j]
+                      : (cameraID == 1) ? vCell[j] + NLeft
+                      : (cameraID == 2) ? vCell[j] + NLeft + NRight
+                      : (cameraID == 3) ? vCell[j] + NLeft + NRight + NSideLeft
+                      : throw std::invalid_argument("Invalid camera Idx: " + std::to_string(cameraID)));
+
             }
         }
     }
@@ -906,6 +969,14 @@ void KeyFrame::PreSave(set<KeyFrame*>& spKF,set<MapPoint*>& spMP, set<GeometricC
     if(mpCamera2 && spCam.find(mpCamera2) != spCam.end())
         mnBackupIdCamera2 = mpCamera2->GetId();
 
+    mnBackupIdCamera3 = -1;
+    if(mpCamera3 && spCam.find(mpCamera3) != spCam.end())
+        mnBackupIdCamera3 = mpCamera3->GetId();
+
+    mnBackupIdCamera4 = -1;
+    if(mpCamera4 && spCam.find(mpCamera4) != spCam.end())
+        mnBackupIdCamera4 = mpCamera4->GetId();
+
     //Inertial data
     mBackupPrevKFId = -1;
     if(mPrevKF && spKF.find(mPrevKF) != spKF.end())
@@ -926,6 +997,8 @@ void KeyFrame::PostLoad(map<long unsigned int, KeyFrame*>& mpKFid, map<long unsi
     SetPose(mTcw);
 
     mTrl = mTlr.inverse();
+    mTsll = mTlsl.inverse();
+    mTsrl = mTlsr.inverse();
 
     // Reference reconstruction
     // Each MapPoint sight from this KeyFrame
@@ -985,6 +1058,14 @@ void KeyFrame::PostLoad(map<long unsigned int, KeyFrame*>& mpKFid, map<long unsi
     if(mnBackupIdCamera2 >= 0)
     {
         mpCamera2 = mpCamId[mnBackupIdCamera2];
+    }
+    if(mnBackupIdCamera3 >= 0)
+    {
+        mpCamera3 = mpCamId[mnBackupIdCamera3];
+    }
+    if(mnBackupIdCamera4 >= 0)
+    {
+        mpCamera4 = mpCamId[mnBackupIdCamera4];
     }
 
     //Inertial data
@@ -1146,6 +1227,82 @@ Eigen::Vector3f KeyFrame::GetRightTranslation() {
     return (mTrl * mTcw).translation();
 }
 
+// Side Left
+Sophus::SE3f KeyFrame::GetRelativePoseTsll()
+{
+    unique_lock<mutex> lock(mMutexPose);
+    return mTsll;
+}
+
+Sophus::SE3f KeyFrame::GetRelativePoseTlsl()
+{
+    unique_lock<mutex> lock(mMutexPose);
+    return mTlsl;
+}
+
+Sophus::SE3<float> KeyFrame::GetSideLeftPose() {
+    unique_lock<mutex> lock(mMutexPose);
+    return mTsll * mTcw;
+}
+
+Sophus::SE3<float> KeyFrame::GetSideLeftPoseInverse() {
+    unique_lock<mutex> lock(mMutexPose);
+    return mTwc * mTlsl;
+}
+
+Eigen::Vector3f KeyFrame::GetSideLeftCameraCenter() {
+    unique_lock<mutex> lock(mMutexPose);
+    return (mTwc * mTlsl).translation();
+}
+
+Eigen::Matrix<float,3,3> KeyFrame::GetSideLeftRotation() {
+    unique_lock<mutex> lock(mMutexPose);
+    return (mTsll.so3() * mTcw.so3()).matrix();
+}
+
+Eigen::Vector3f KeyFrame::GetSideLeftTranslation() {
+    unique_lock<mutex> lock(mMutexPose);
+    return (mTsll * mTcw).translation();
+}
+
+//Side Right
+Sophus::SE3f KeyFrame::GetRelativePoseTsrl()
+{
+    unique_lock<mutex> lock(mMutexPose);
+    return mTsrl;
+}
+
+Sophus::SE3f KeyFrame::GetRelativePoseTlsr()
+{
+    unique_lock<mutex> lock(mMutexPose);
+    return mTlsr;
+}
+
+Sophus::SE3<float> KeyFrame::GetSideRightPose() {
+    unique_lock<mutex> lock(mMutexPose);
+    return mTsrl * mTcw;
+}
+
+Sophus::SE3<float> KeyFrame::GetSideRightPoseInverse() {
+    unique_lock<mutex> lock(mMutexPose);
+    return mTwc * mTlsr;
+}
+
+Eigen::Vector3f KeyFrame::GetSideRightCameraCenter() {
+    unique_lock<mutex> lock(mMutexPose);
+    return (mTwc * mTlsr).translation();
+}
+
+Eigen::Matrix<float,3,3> KeyFrame::GetSideRightRotation() {
+    unique_lock<mutex> lock(mMutexPose);
+    return (mTsrl.so3() * mTcw.so3()).matrix();
+}
+
+Eigen::Vector3f KeyFrame::GetSideRightTranslation() {
+    unique_lock<mutex> lock(mMutexPose);
+    return (mTsrl * mTcw).translation();
+}
+
 void KeyFrame::SetORBVocabulary(ORBVocabulary* pORBVoc)
 {
     mpORBvocabulary = pORBVoc;
@@ -1156,4 +1313,40 @@ void KeyFrame::SetKeyFrameDatabase(KeyFrameDatabase* pKFDB)
     mpKeyFrameDB = pKFDB;
 }
 
+const cv::KeyPoint &KeyFrame::GetKey(const int kpIdx) const
+{
+    assert(kpIdx <= N);
+    const auto cameraId = kpIdxToCamIdx(kpIdx);
+    switch (cameraId) {
+    case 0:
+        return mvKeys[kpIdx];
+    case 1:
+        return mvKeysRight[kpIdx - NLeft];
+    case 2:
+        return mvKeysSideLeft[kpIdx - NLeft - NRight];
+    case 3:
+        return mvKeysSideRight[kpIdx - NLeft - NRight - NSideLeft];
+    default:
+        throw std::invalid_argument("Invalid keypoint index: " + std::to_string(kpIdx));
+    }
+
+}
+
+int KeyFrame::kpIdxToCamIdx(const int kpIdx) const
+{
+    return (NLeft == -1) ? 0 :
+           (kpIdx < NLeft) ? 0 :
+           (kpIdx < NLeft + NRight) ? 1 :
+           (kpIdx < NLeft + NRight + NSideLeft) ? 2 :
+           3;
+}
+
+GeometricCamera* KeyFrame::GetCamera(const int cameraId)
+{
+    return (cameraId == 0) ? mpCamera
+         : (cameraId == 1) ? mpCamera2
+         : (cameraId == 2) ? mpCamera3
+         : (cameraId == 3) ? mpCamera4
+         : throw std::invalid_argument("Invalid camera Idx: " + std::to_string(cameraId));
+}
 } //namespace ORB_SLAM
