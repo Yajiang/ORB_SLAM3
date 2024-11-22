@@ -355,17 +355,60 @@ void Viewer::Run()
 
         if(mpTracker->mSensor == mpSystem->STEREO || mpTracker->mSensor == mpSystem->IMU_STEREO || mpTracker->mSensor == mpSystem->IMU_RGBD){
             cv::Mat imRight = mpFrameDrawer->DrawRightFrame(trackedImageScale);
+            // Pad the smaller image before horizontal concatenation
+            if (im.rows < imRight.rows) {
+              int padding = imRight.rows - im.rows;
+              cv::copyMakeBorder(im, im, 0, padding, 0, 0, cv::BORDER_CONSTANT,
+                                 cv::Scalar(0, 0, 0));
+            } else if (imRight.rows < im.rows) {
+              int padding = im.rows - imRight.rows;
+              cv::copyMakeBorder(imRight, imRight, 0, padding, 0, 0,
+                                 cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
+            }
             cv::hconcat(im,imRight,toShow);
         }
-        else if(mpTracker->mSensor == mpSystem->IMU_MULTI)
+        else if(mpTracker->mSensor == mpSystem->CAMERA_RIG || mpTracker->mSensor == mpSystem->IMU_CAMERA_RIG)
         {
             cv::Mat frontImgs, sideImgs;
             cv::Mat imRight = mpFrameDrawer->DrawRightFrame(trackedImageScale);
             cv::Mat imSideLeft = mpFrameDrawer->DrawSideLeftFrame(trackedImageScale);
-            cv::Mat imSideRight = mpFrameDrawer->DrawSideRightFrame(trackedImageScale);
-            cv::hconcat(im,imRight,frontImgs);
-            cv::hconcat(imSideLeft,imSideRight,sideImgs);
-            cv::vconcat(frontImgs,sideImgs,toShow);
+            cv::Mat imSideRight =
+                mpFrameDrawer->DrawSideRightFrame(trackedImageScale);
+
+            // Pad the smaller image before horizontal concatenation
+            if (im.rows < imRight.rows) {
+              int padding = imRight.rows - im.rows;
+              cv::copyMakeBorder(im, im, 0, padding, 0, 0, cv::BORDER_CONSTANT,
+                                 cv::Scalar(0, 0, 0));
+            } else if (imRight.rows < im.rows) {
+              int padding = im.rows - imRight.rows;
+              cv::copyMakeBorder(imRight, imRight, 0, padding, 0, 0,
+                                 cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
+            }
+            cv::hconcat(im, imRight, frontImgs);
+
+            // Pad the smaller image before horizontal concatenation
+            if (imSideLeft.rows < imSideRight.rows) {
+              int padding = imSideRight.rows - imSideLeft.rows;
+              cv::copyMakeBorder(imSideLeft, imSideLeft, 0, padding, 0, 0,
+                                 cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
+            } else if (imSideRight.rows < imSideLeft.rows) {
+              int padding = imSideLeft.rows - imSideRight.rows;
+              cv::copyMakeBorder(imSideRight, imSideRight, 0, padding, 0, 0,
+                                 cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
+            }
+            cv::hconcat(imSideLeft, imSideRight, sideImgs);
+
+            if (frontImgs.cols < sideImgs.cols) {
+              int padding = sideImgs.cols - frontImgs.cols;
+              cv::copyMakeBorder(frontImgs, frontImgs, 0, 0, 0, padding,
+                                 cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
+            } else if (sideImgs.cols < frontImgs.cols) {
+              int padding = frontImgs.cols - sideImgs.cols;
+              cv::copyMakeBorder(sideImgs, sideImgs, 0, 0, 0, padding,
+                                 cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
+            }
+            cv::vconcat(frontImgs, sideImgs, toShow);
         }
         else{
             toShow = im;

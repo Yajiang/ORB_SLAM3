@@ -1565,14 +1565,18 @@ Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const cv::Mat &imSid
 #ifdef REGISTER_TIMES
     std::chrono::steady_clock::time_point time_StartExtORB = std::chrono::steady_clock::now();
 #endif
-    thread threadLeft(&Frame::ExtractORB,this,0,bleft,imLeft,static_cast<KannalaBrandt8*>(mpCamera)->mvLappingArea[0],static_cast<KannalaBrandt8*>(mpCamera)->mvLappingArea[1]);
-    thread threadRight(&Frame::ExtractORB,this,1,bright,imRight,static_cast<KannalaBrandt8*>(mpCamera2)->mvLappingArea[0],static_cast<KannalaBrandt8*>(mpCamera2)->mvLappingArea[1]);
-    thread threadSideLeft(&Frame::ExtractORB,this,2,bsideleft,imSideLeft,0,0);
-    thread threadSideRight(&Frame::ExtractORB,this,3,bsideright,imSideRight,0,0);
-    threadLeft.join();
-    threadRight.join();
-    threadSideLeft.join();
-    threadSideRight.join();
+    // thread threadLeft(&Frame::ExtractORB,this,0,bleft,imLeft,static_cast<KannalaBrandt8*>(mpCamera)->mvLappingArea[0],static_cast<KannalaBrandt8*>(mpCamera)->mvLappingArea[1]);
+    // thread threadRight(&Frame::ExtractORB,this,1,bright,imRight,static_cast<KannalaBrandt8*>(mpCamera2)->mvLappingArea[0],static_cast<KannalaBrandt8*>(mpCamera2)->mvLappingArea[1]);
+    // thread threadSideLeft(&Frame::ExtractORB,this,2,bsideleft,imSideLeft,0,0);
+    // thread threadSideRight(&Frame::ExtractORB,this,3,bsideright,imSideRight,0,0);
+    // threadLeft.join();
+    // threadRight.join();
+    // threadSideLeft.join();
+    // threadSideRight.join();
+    ExtractORB(0,bleft,imLeft,static_cast<KannalaBrandt8*>(mpCamera)->mvLappingArea[0],static_cast<KannalaBrandt8*>(mpCamera)->mvLappingArea[1]);
+    ExtractORB(1,bright,imRight,static_cast<KannalaBrandt8*>(mpCamera2)->mvLappingArea[0],static_cast<KannalaBrandt8*>(mpCamera2)->mvLappingArea[1]);
+    ExtractORB(2,bsideleft,imSideLeft,0,0);
+    ExtractORB(3,bsideright,imSideRight,0,0);
 #ifdef REGISTER_TIMES
     std::chrono::steady_clock::time_point time_EndExtORB = std::chrono::steady_clock::now();
 

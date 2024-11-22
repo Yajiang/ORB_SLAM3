@@ -210,7 +210,7 @@ int main(int argc, char **argv) {
 
   sigaction(SIGINT, &sigIntHandler, NULL);
   b_continue_session = true;
-  ORB_SLAM3::System SLAM(argv[1], argv[2], ORB_SLAM3::System::IMU_MULTI,true,0);
+  ORB_SLAM3::System SLAM(argv[1], argv[2], ORB_SLAM3::System::CAMERA_RIG,true,0);
   // ORB_SLAM3::System SLAM(argv[1], argv[2], ORB_SLAM3::System::MONOCULAR, true, 0);
   std::string dataRootDir = argv[3];
   std::vector<std::string> vStrLeftImages;
@@ -273,7 +273,7 @@ int main(int argc, char **argv) {
       // Create SLAM system. It initializes all system threads and gets ready to
       // process frames.
       float imageScale = SLAM.GetImageScale();
-      SLAM.TrackMulti(frontLeftImg, frontRightImg, leftImg, rightImg,
+      SLAM.TrackCameraRig(frontLeftImg, frontRightImg, leftImg, rightImg,
                       timestamp);
     }
   }

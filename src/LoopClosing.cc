@@ -140,7 +140,7 @@ void LoopClosing::Run()
             {
                 if(mbMergeDetected)
                 {
-                    if ((mpTracker->mSensor==System::IMU_MONOCULAR || mpTracker->mSensor==System::IMU_STEREO || mpTracker->mSensor==System::IMU_RGBD || mpTracker->mSensor==System::IMU_MULTI) &&
+                    if ((mpTracker->mSensor==System::IMU_MONOCULAR || mpTracker->mSensor==System::IMU_STEREO || mpTracker->mSensor==System::IMU_RGBD || mpTracker->mSensor==System::IMU_CAMERA_RIG) &&
                         (!mpCurrentKF->GetMap()->isImuInitialized()))
                     {
                         cout << "IMU is not initilized, merge is aborted" << endl;
@@ -199,7 +199,7 @@ void LoopClosing::Run()
                                 continue;
                             }
                             // If inertial, force only yaw
-                            if ((mpTracker->mSensor==System::IMU_MONOCULAR || mpTracker->mSensor==System::IMU_STEREO || mpTracker->mSensor==System::IMU_RGBD || mpTracker->mSensor==System::IMU_MULTI) &&
+                            if ((mpTracker->mSensor==System::IMU_MONOCULAR || mpTracker->mSensor==System::IMU_STEREO || mpTracker->mSensor==System::IMU_RGBD || mpTracker->mSensor==System::IMU_CAMERA_RIG) &&
                                    mpCurrentKF->GetMap()->GetIniertialBA1())
                             {
                                 Eigen::Vector3d phi = LogSO3(mSold_new.rotation().toRotationMatrix());
@@ -220,7 +220,7 @@ void LoopClosing::Run()
                         nMerges += 1;
 #endif
                         // TODO UNCOMMENT
-                        if (mpTracker->mSensor==System::IMU_MONOCULAR ||mpTracker->mSensor==System::IMU_STEREO || mpTracker->mSensor==System::IMU_RGBD || mpTracker->mSensor==System::IMU_MULTI)
+                        if (mpTracker->mSensor==System::IMU_MONOCULAR ||mpTracker->mSensor==System::IMU_STEREO || mpTracker->mSensor==System::IMU_RGBD || mpTracker->mSensor==System::IMU_CAMERA_RIG)
                             MergeLocal2();
                         else
                             MergeLocal();
@@ -310,7 +310,7 @@ void LoopClosing::Run()
                             if(mpCurrentKF->GetMap()->IsInertial())
                             {
                                 // If inertial, force only yaw
-                                if ((mpTracker->mSensor==System::IMU_MONOCULAR ||mpTracker->mSensor==System::IMU_STEREO || mpTracker->mSensor==System::IMU_RGBD || mpTracker->mSensor==System::IMU_MULTI) &&
+                                if ((mpTracker->mSensor==System::IMU_MONOCULAR ||mpTracker->mSensor==System::IMU_STEREO || mpTracker->mSensor==System::IMU_RGBD || mpTracker->mSensor==System::IMU_CAMERA_RIG) &&
                                         mpCurrentKF->GetMap()->GetIniertialBA2())
                                 {
                                     phi(0)=0;
@@ -1858,7 +1858,7 @@ void LoopClosing::MergeLocal2()
 
     const int numKFnew=pCurrentMap->KeyFramesInMap();
 
-    if((mpTracker->mSensor==System::IMU_MONOCULAR || mpTracker->mSensor==System::IMU_STEREO || mpTracker->mSensor==System::IMU_RGBD || mpTracker->mSensor==System::IMU_MULTI)
+    if((mpTracker->mSensor==System::IMU_MONOCULAR || mpTracker->mSensor==System::IMU_STEREO || mpTracker->mSensor==System::IMU_RGBD || mpTracker->mSensor==System::IMU_CAMERA_RIG)
        && !pCurrentMap->GetIniertialBA2()){
         // Map is not completly initialized
         Eigen::Vector3d bg, ba;

@@ -127,7 +127,8 @@ ${PROJECT_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o.so
 # Build examples
 # # RGB-D examples
 # set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/RGB-D)
-file(GLOB_RECURSE SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/Examples/Revopoint/*)
+# file(GLOB_RECURSE SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/Examples/Revopoint/*)
+file(GLOB_RECURSE SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/Examples/RevopointMulti/*)
 add_executable(revopoint ${SOURCES})
 target_link_libraries(revopoint ${PROJECT_NAME}
 ${OpenCV_LIBS}

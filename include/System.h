@@ -95,7 +95,8 @@ public:
         IMU_MONOCULAR=3,
         IMU_STEREO=4,
         IMU_RGBD=5,
-        IMU_MULTI=6,
+        CAMERA_RIG=6,
+        IMU_CAMERA_RIG=7,
     };
 
     // File type
@@ -128,7 +129,7 @@ public:
     // Proccess the given multi frame. Images must be synchronized and rectified.
     // Input images: RGB (CV_8UC3) or grayscale (CV_8U). RGB is converted to grayscale.
     // Returns the camera pose (empty if tracking fails).
-    Sophus::SE3f TrackMulti(const cv::Mat &imLeft, const cv::Mat &imRight, const cv::Mat &imSideLeft, const cv::Mat &imSideRight, const double &timestamp, const vector<IMU::Point>& vImuMeas = vector<IMU::Point>(), string filename="");
+    Sophus::SE3f TrackCameraRig(const cv::Mat &imLeft, const cv::Mat &imRight, const cv::Mat &imSideLeft, const cv::Mat &imSideRight, const double &timestamp, const vector<IMU::Point>& vImuMeas = vector<IMU::Point>(), string filename="");
 
     // This stops local mapping thread (map building) and performs only camera tracking.
     void ActivateLocalizationMode();

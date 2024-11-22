@@ -6,31 +6,53 @@
 File.version: "1.0"
 
 Camera.type: "KannalaBrandt8"
-
-# Left Camera calibration and distortion parameters (OpenCV)
-Camera1.fx: 253.74469953582386
-Camera1.fy: 253.00898309533483
-Camera1.cx: 414.9536792684886
-Camera1.cy: 300.4558254416866
-
-# Kannala-Brandt distortion parameters
-Camera1.k1: -0.0158716
-Camera1.k2: -0.00253978
-Camera1.k3: -0.000803488
-Camera1.k4: -1.33842e-05
-
-# Right Camera calibration and distortion parameters (OpenCV)
-Camera2.fx: 252.95915664247718
-Camera2.fy: 252.13610147317542
-Camera2.cx: 387.4686667372588
-Camera2.cy: 310.03953448477324
+# front left Camera calibration and distortion parameters (OpenCV)
+Camera1.fx: 250.0
+Camera1.fy: 250.0
+Camera1.cx: 150.0
+Camera1.cy: 150.0
 
 # Kannala-Brandt distortion parameters
-Camera2.k1: -0.0176681
-Camera2.k2: -0.00200084
-Camera2.k3: -0.000857367
-Camera2.k4: -3.85742e-06
+Camera1.k1: 0.0
+Camera1.k2: 0.0
+Camera1.k3: 0.0
+Camera1.k4: 0.0
 
+# front right Camera calibration and distortion parameters (OpenCV)
+Camera2.fx: 250.0
+Camera2.fy: 250.0
+Camera2.cx: 150.0
+Camera2.cy: 150.0
+
+# Kannala-Brandt distortion parameters
+Camera2.k1: 0.0
+Camera2.k2: 0.0
+Camera2.k3: 0.0
+Camera2.k4: 0.0
+
+# left Camera calibration and distortion parameters (OpenCV)
+Camera3.fx: 253.74469953582386
+Camera3.fy: 253.00898309533483
+Camera3.cx: 414.9536792684886
+Camera3.cy: 300.4558254416866
+
+# Kannala-Brandt distortion parameters
+Camera3.k1: -0.0158716
+Camera3.k2: -0.00253978
+Camera3.k3: -0.000803488
+Camera3.k4: -1.33842e-05
+
+# right Camera calibration and distortion parameters (OpenCV)
+Camera4.fx: 252.95915664247718
+Camera4.fy: 252.13610147317542
+Camera4.cx: 387.4686667372588
+Camera4.cy: 310.03953448477324
+
+# Kannala-Brandt distortion parameters
+Camera4.k1: -0.0176681
+Camera4.k2: -0.00200084
+Camera4.k3: -0.000857367
+Camera4.k4: -3.85742e-06
 
 # Color order of the images (0: BGR, 1: RGB. It is ignored if images are grayscale)
 Camera.RGB: 1
@@ -56,10 +78,16 @@ Stereo.b: 0.1849
 
 # Lapping area between images (We must calculate)
 Camera1.overlappingBegin: 0
-Camera1.overlappingEnd: 800
+Camera1.overlappingEnd: 300
 
 Camera2.overlappingBegin: 0
-Camera2.overlappingEnd: 800
+Camera2.overlappingEnd: 300
+
+Camera3.overlappingBegin: 0
+Camera3.overlappingEnd: 800
+
+Camera4.overlappingBegin: 0
+Camera4.overlappingEnd: 800
 
 #--------------------------------------------------------------------------------------------
 # ORB Parameters
