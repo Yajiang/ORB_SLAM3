@@ -149,6 +149,20 @@ Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeSt
     if(mvKeys.empty())
         return;
 
+    // Draw keypoints on imLeft and imRight
+    cv::Mat imLeftWithKeypoints, imRightWithKeypoints;
+    cv::drawKeypoints(imLeft, mvKeys, imLeftWithKeypoints,
+                      cv::Scalar::all(-1), cv::DrawMatchesFlags::DEFAULT);
+    cv::drawKeypoints(imRight, mvKeysRight, imRightWithKeypoints,
+                      cv::Scalar::all(-1), cv::DrawMatchesFlags::DEFAULT);
+
+    // Display or save the images with keypoints
+    cv::imshow("Keypoints Left", imLeftWithKeypoints);
+    cv::imshow("Keypoints Right", imRightWithKeypoints);
+    cv::waitKey(1); // Wait for a key press to close the windows
+    // cv::imwrite("left.png",imLeft);
+    // cv::imwrite("right.png",imRight);
+
     UndistortKeyPoints();
 
 #ifdef REGISTER_TIMES
@@ -903,6 +917,7 @@ void Frame::UndistortKeyPoints()
     if(mDistCoef.at<float>(0)==0.0)
     {
         mvKeysUn=mvKeys;
+        // std::cout <<"don't use undistort function" << std::endl;
         return;
     }
 
@@ -967,7 +982,8 @@ void Frame::ComputeStereoMatches()
     mvuRight = vector<float>(N,-1.0f);
     mvDepth = vector<float>(N,-1.0f);
 
-    const int thOrbDist = (ORBmatcher::TH_HIGH+ORBmatcher::TH_LOW)/2;
+    // const int thOrbDist = (ORBmatcher::TH_HIGH+ORBmatcher::TH_LOW)/2;
+    const int thOrbDist = ORBmatcher::TH_HIGH;
 
     const int nRows = mpORBextractorLeft->mvImagePyramid[0].rows;
 
@@ -989,6 +1005,7 @@ void Frame::ComputeStereoMatches()
 
         for(int yi=minr;yi<=maxr;yi++)
             vRowIndices[yi].push_back(iR);
+        // std::cout << "search radius : " << r << std::endl;
     }
 
     // Set limits for search
@@ -1103,6 +1120,9 @@ void Frame::ComputeStereoMatches()
             float bestuR = mvScaleFactors[kpL.octave]*((float)scaleduR0+(float)bestincR+deltaR);
 
             float disparity = (uL-bestuR);
+            // std::cout << "disparity " << disparity << std::endl;
+            // std::cout << "minD " << minD << std::endl;
+            // std::cout << "maxD " << maxD << std::endl;
 
             if(disparity>=minD && disparity<maxD)
             {
@@ -1322,6 +1342,8 @@ void Frame::ComputeStereoFishEyeMatches() {
             }
         }
     }
+    std::cout << "desc matches size: " << descMatches << std::endl;
+    std::cout << "n matches size: " << nMatches << std::endl;
 }
 
 void Frame::ComputeMultiFishEyeMatches() {

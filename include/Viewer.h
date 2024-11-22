@@ -64,7 +64,7 @@ public:
     //void SetTrackingPause();
 
     bool both;
-private:
+  private:
 
     bool ParseViewerParamFile(cv::FileStorage &fSettings);
 

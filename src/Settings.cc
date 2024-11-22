@@ -351,8 +351,26 @@ namespace ORB_SLAM3 {
             bf_ = b_ * calibration1_->getParameter(0);
         }
         else{
+            // cv::Mat cvTrl = readParameter<cv::Mat>(fSettings,"Stereo.T_c1_c2",found);
+            // cv::Mat cvTlr = cvTrl.inv();
             cv::Mat cvTlr = readParameter<cv::Mat>(fSettings,"Stereo.T_c1_c2",found);
-            Tlr_ = Converter::toSophus(cvTlr);
+
+            // for stereo fisheye clip mode
+            // Create a rotation matrix around the Y-axis by 45 degrees
+            float angle = 45.0 * CV_PI / 180.0; // Convert to radians
+            // float angle = 0.0 * CV_PI / 180.0; // Convert to radians
+            // clang-format off
+            cv::Mat rotationY =
+                (cv::Mat_<float>(4, 4) << cos(angle), 0, sin(angle), 0,
+                 0, 1, 0, 0,
+                 -sin(angle), 0, cos(angle), 0, 
+                 0, 0, 0, 1);
+            // clang-format on
+            cvTlr = rotationY * cvTlr * rotationY;
+            std::cout << cvTlr << std::endl;
+
+            // Tlr_ = Converter::toSophus(cvTlr); // test1
+            Tlr_ = Converter::toSophus(cvTlr.inv());
 
             //TODO: also search for Trl and invert if necessary
 
@@ -670,6 +688,7 @@ namespace ORB_SLAM3 {
         R12.convertTo(R12,CV_64F);
         cv::Mat t12 = cvTlr.rowRange(0,3).col(3);
         t12.convertTo(t12,CV_64F);
+        std::cout <<"R12" << R12 <<std::endl;
 
         cv::Mat R_r1_u1, R_r2_u2;
         cv::Mat P1, P2, Q;

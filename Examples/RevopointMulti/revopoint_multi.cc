@@ -1,24 +1,3 @@
-/**
- * This file is part of ORB-SLAM3
- *
- * Copyright (C) 2017-2021 Carlos Campos, Richard Elvira, Juan J. Gómez
- * Rodríguez, José M.M. Montiel and Juan D. Tardós, University of Zaragoza.
- * Copyright (C) 2014-2016 Raúl Mur-Artal, José M.M. Montiel and Juan D. Tardós,
- * University of Zaragoza.
- *
- * ORB-SLAM3 is free software: you can redistribute it and/or modify it under
- * the terms of the GNU General Public License as published by the Free Software
- * Foundation, either version 3 of the License, or (at your option) any later
- * version.
- *
- * ORB-SLAM3 is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
- * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along with
- * ORB-SLAM3. If not, see <http://www.gnu.org/licenses/>.
- */
-
 #include "file_system.hpp"
 #include <Eigen/Eigen>
 #include <System.h>
@@ -60,13 +39,14 @@ void loadLeftImages(const string &dataRootFolder,
                     std::vector<double> &vTimeStamps) {
   vTimeStamps.reserve(5000);
   vstrImages.reserve(5000);
-  auto monoFolder = stlplus::folder_down(dataRootFolder, "mono");
-  auto allFiles = stlplus::folder_all(monoFolder);
+  auto imgFolder = stlplus::folder_down(
+      stlplus::folder_down(dataRootFolder, "mono"), "left");
+  auto allFiles = stlplus::folder_all(imgFolder);
 
   for (auto filename : allFiles) {
     if (filename.find("mono_left_") != std::string::npos) {
       double timestamp = double(extractTimestamp(filename)) / 1e3; // ms -> s
-      filename = stlplus::create_filespec(monoFolder, filename);
+      filename = stlplus::create_filespec(imgFolder, filename);
       vTimeStamps.push_back(timestamp);
       vstrImages.push_back(filename);
     }
@@ -78,13 +58,52 @@ void loadRightImages(const string &dataRootFolder,
                      std::vector<double> &vTimeStamps) {
   vTimeStamps.reserve(5000);
   vstrImages.reserve(5000);
-  auto monoFolder = stlplus::folder_down(dataRootFolder, "mono");
-  auto allFiles = stlplus::folder_all(monoFolder);
+  auto imgFolder = stlplus::folder_down(
+      stlplus::folder_down(dataRootFolder, "mono"), "right");
+  auto allFiles = stlplus::folder_all(imgFolder);
 
   for (auto filename : allFiles) {
     if (filename.find("mono_right_") != std::string::npos) {
       double timestamp = double(extractTimestamp(filename)) / 1e3; // ms -> s
-      filename = stlplus::create_filespec(monoFolder, filename);
+      filename = stlplus::create_filespec(imgFolder, filename);
+      vTimeStamps.push_back(timestamp);
+      vstrImages.push_back(filename);
+    }
+  }
+}
+
+void loadFrontLeftImages(const string &dataRootFolder,
+                     std::vector<string> &vstrImages,
+                     std::vector<double> &vTimeStamps) {
+  vTimeStamps.reserve(5000);
+  vstrImages.reserve(5000);
+  auto imgFolder = stlplus::folder_down(
+      stlplus::folder_down(dataRootFolder, "mono"), "front_left");
+  auto allFiles = stlplus::folder_all(imgFolder);
+
+  for (auto filename : allFiles) {
+    if (filename.find("mono_left_") != std::string::npos) {
+      double timestamp = double(extractTimestamp(filename)) / 1e3; // ms -> s
+      filename = stlplus::create_filespec(imgFolder, filename);
+      vTimeStamps.push_back(timestamp);
+      vstrImages.push_back(filename);
+    }
+  }
+}
+
+void loadFrontRightImages(const string &dataRootFolder,
+                     std::vector<string> &vstrImages,
+                     std::vector<double> &vTimeStamps) {
+  vTimeStamps.reserve(5000);
+  vstrImages.reserve(5000);
+  auto imgFolder = stlplus::folder_down(
+      stlplus::folder_down(dataRootFolder, "mono"), "front_right");
+  auto allFiles = stlplus::folder_all(imgFolder);
+
+  for (auto filename : allFiles) {
+    if (filename.find("mono_right_") != std::string::npos) {
+      double timestamp = double(extractTimestamp(filename)) / 1e3; // ms -> s
+      filename = stlplus::create_filespec(imgFolder, filename);
       vTimeStamps.push_back(timestamp);
       vstrImages.push_back(filename);
     }
@@ -191,43 +210,43 @@ int main(int argc, char **argv) {
 
   sigaction(SIGINT, &sigIntHandler, NULL);
   b_continue_session = true;
-  ORB_SLAM3::System SLAM(argv[1], argv[2], ORB_SLAM3::System::STEREO,
-  true,0);
+  ORB_SLAM3::System SLAM(argv[1], argv[2], ORB_SLAM3::System::IMU_MULTI,true,0);
   // ORB_SLAM3::System SLAM(argv[1], argv[2], ORB_SLAM3::System::MONOCULAR, true, 0);
-
-  double offset = 0; // ms
-
   std::string dataRootDir = argv[3];
   std::vector<std::string> vStrLeftImages;
   std::vector<std::string> vStrRightImages;
+  std::vector<std::string> vStrFrontLeftImages;
+  std::vector<std::string> vStrFrontRightImages;
   std::vector<double> vLeftTimestamps;
   std::vector<double> vRightTimestamps;
-  std::vector<std::string> vStrDepths;
-  std::vector<double> vDepthTimestamps;
+  std::vector<double> vFrontLeftTimestamps;
+  std::vector<double> vFrontRightTimestamps;
   std::vector<double> vImuTimeStamps;
   std::vector<cv::Point3f> vAcc;
   std::vector<cv::Point3f> vGyro;
   std::string imuPath = stlplus::create_filespec(dataRootDir, "imu.txt");
   loadLeftImages(dataRootDir, vStrLeftImages, vLeftTimestamps);
   loadRightImages(dataRootDir, vStrRightImages, vRightTimestamps);
-  // readInImuFromFile(imuPath, vImuTimeStamps, vAcc, vGyro);
+  loadFrontLeftImages(dataRootDir, vStrFrontLeftImages, vFrontLeftTimestamps);
+  loadFrontRightImages(dataRootDir, vStrFrontRightImages,
+                       vFrontRightTimestamps);
   sortPath(vStrLeftImages, vLeftTimestamps);
   sortPath(vStrRightImages, vRightTimestamps);
-
-  int firstImu = 0;
-  while (vImuTimeStamps[firstImu] <= vLeftTimestamps[0])
-    firstImu++;
-  firstImu--; // first imu measurement to be considered
-  firstImu += 100;
+  sortPath(vStrFrontLeftImages, vFrontLeftTimestamps);
+  sortPath(vStrFrontRightImages, vFrontRightTimestamps);
 
   cv::Mat leftImg;
   cv::Mat rightImg;
+  cv::Mat frontLeftImg;
+  cv::Mat frontRightImg;
   vector<ORB_SLAM3::IMU::Point> vImuMeas;
   while (!SLAM.isShutDown()) {
     for (int id = 10; id < vStrLeftImages.size(); id++) {
       // Read image from file
       leftImg = cv::imread(vStrLeftImages[id], cv::IMREAD_UNCHANGED);
       rightImg = cv::imread(vStrRightImages[id], cv::IMREAD_UNCHANGED);
+      frontLeftImg = cv::imread(vStrFrontLeftImages[id], cv::IMREAD_UNCHANGED);
+      frontRightImg = cv::imread(vStrFrontRightImages[id], cv::IMREAD_UNCHANGED);
       double timestamp = vLeftTimestamps[id];
 
       if (leftImg.empty()) {
@@ -236,24 +255,26 @@ int main(int argc, char **argv) {
         return 1;
       }
       if (rightImg.empty()) {
-        cerr << endl << "Failed to load image at: " << vStrDepths[id] << endl;
+        cerr << endl
+             << "Failed to load image at: " << vStrRightImages[id] << endl;
+        return 1;
+      }
+      if (frontLeftImg.empty()) {
+        cerr << endl
+             << "Failed to load image at: " << vStrFrontLeftImages[id] << endl;
+        return 1;
+      }
+      if (frontRightImg.empty()) {
+        cerr << endl
+             << "Failed to load image at: " << vStrFrontRightImages[id] << endl;
         return 1;
       }
 
       // Create SLAM system. It initializes all system threads and gets ready to
       // process frames.
       float imageScale = SLAM.GetImageScale();
-      // Clear IMU vectors
-      // cv::Mat raw;
-      // cv::hconcat(leftImg, rightImg, raw);
-      // cv::imshow("video",raw );
-      // cv::waitKey(1);
-      std::cout << "left image path" << vStrLeftImages[id] << std::endl;
-      std::cout << "right image path" << vStrRightImages[id] << std::endl;
-      SLAM.TrackStereo(leftImg, rightImg, timestamp);
-      // SLAM.TrackStereo(rightImg, leftImg, timestamp);
-      // SLAM.TrackMonocular(leftImg, timestamp);
-      // SLAM.TrackMonocular(rightImg, timestamp);
+      SLAM.TrackMulti(frontLeftImg, frontRightImg, leftImg, rightImg,
+                      timestamp);
     }
   }
   cout << "System shutdown!\n";

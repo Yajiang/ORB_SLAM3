@@ -35,10 +35,14 @@ namespace ORB_SLAM3
 FrameDrawer::FrameDrawer(Atlas* pAtlas, const int sensor):both(false),mpAtlas(pAtlas), mSensor(sensor)
 {
     mState=Tracking::SYSTEM_NOT_READY;
-    mIm = cv::Mat(480,640,CV_8UC3, cv::Scalar(0,0,0));
-    mImRight = cv::Mat(480,640,CV_8UC3, cv::Scalar(0,0,0));
-    mImSideLeft = cv::Mat(480,640,CV_8UC3, cv::Scalar(0,0,0));
-    mImSideRight = cv::Mat(480,640,CV_8UC3, cv::Scalar(0,0,0));
+    // mIm = cv::Mat(480,640,CV_8UC3, cv::Scalar(0,0,0));
+    // mImRight = cv::Mat(480,640,CV_8UC3, cv::Scalar(0,0,0));
+    // mImSideLeft = cv::Mat(480,640,CV_8UC3, cv::Scalar(0,0,0));
+    // mImSideRight = cv::Mat(480,640,CV_8UC3, cv::Scalar(0,0,0));
+    mIm = cv::Mat(300,300,CV_8UC3, cv::Scalar(0,0,0));
+    mImRight = cv::Mat(300,300,CV_8UC3, cv::Scalar(0,0,0));
+    // mImSideLeft = cv::Mat(480,640,CV_8UC3, cv::Scalar(0,0,0));
+    // mImSideRight = cv::Mat(480,640,CV_8UC3, cv::Scalar(0,0,0));
 }
 
 cv::Mat FrameDrawer::DrawFrame(float imageScale)

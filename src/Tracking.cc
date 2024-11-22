@@ -2905,7 +2905,6 @@ bool Tracking::TrackReferenceKeyFrame()
 
     //mCurrentFrame.PrintPointDistribution();
 
-
     // cout << " TrackReferenceKeyFrame mLastFrame.mTcw:  " << mLastFrame.mTcw << endl;
     Optimizer::PoseOptimization(&mCurrentFrame);
 

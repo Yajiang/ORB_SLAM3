@@ -15,12 +15,22 @@
             //     "/home/yajiang/Revopoint/data/MH_01_easy",
             //     "/home/yajiang/Revopoint/projects/ORB_SLAM3/Examples/Stereo/EuRoC_TimeStamps/MH01.txt"
             // ],
+            // "program": "${workspaceFolder}/build/Release/revopoint",
             "program": "${workspaceFolder}/build/RelWithDebInfo/revopoint",
+            // "program": "${workspaceFolder}/build/Debug/revopoint",
             "args": [
                 "/home/yajiang/Revopoint/projects/ORB_SLAM3/Vocabulary/ORBvoc.txt",
-                "/home/yajiang/Revopoint/projects/ORB_SLAM3/Examples/Revopoint/revopoint_stereo_fisheye.yaml",
-                "/home/yajiang/Revopoint/data/indoor/000001"
+                "/home/yajiang/Revopoint/projects/ORB_SLAM3/Examples/Revopoint/revopoint_stereo_fisheye_clip.yaml",
+                "/home/yajiang/Revopoint/data/indoor/000006/"
             ],
+            // // "program": "${workspaceFolder}/build/Release/revopoint",
+            // "program": "${workspaceFolder}/build/RelWithDebInfo/revopoint",
+            // // "program": "${workspaceFolder}/build/Debug/revopoint",
+            // "args": [
+            //     "/home/yajiang/Revopoint/projects/ORB_SLAM3/Vocabulary/ORBvoc.txt",
+            //     "/home/yajiang/Revopoint/projects/ORB_SLAM3/Examples/Revopoint/revopoint_stereo_fisheye.yaml",
+            //     "/home/yajiang/Revopoint/data/indoor/000001/"
+            // ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
