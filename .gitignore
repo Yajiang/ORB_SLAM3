@@ -92,3 +92,5 @@ borrar/*
 
 */ExecMean.txt
 build_release/
+Thirdparty/
+build-arm64-v8a/

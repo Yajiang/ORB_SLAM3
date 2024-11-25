@@ -435,7 +435,7 @@ class RxSO3 : public RxSO3Base<RxSO3<Scalar_, Options>> {
 
   /// Copy constructor
   ///
-  SOPHUS_FUNC RxSO3(RxSO3 const& other) = default;
+  // SOPHUS_FUNC RxSO3(RxSO3 const& other) = default;
 
   /// Copy-like constructor from OtherDerived
   ///

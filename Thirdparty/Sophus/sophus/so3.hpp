@@ -453,7 +453,7 @@ class SO3 : public SO3Base<SO3<Scalar_, Options>> {
 
   /// Copy constructor
   ///
-  SOPHUS_FUNC SO3(SO3 const& other) = default;
+  // SOPHUS_FUNC SO3(SO3 const& other) = default;
 
   /// Copy-like constructor from OtherDerived.
   ///

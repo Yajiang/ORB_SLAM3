@@ -21,9 +21,9 @@
 #include "System.h"
 #include "Converter.h"
 #include <thread>
-#include <pangolin/pangolin.h>
+// #include <pangolin/pangolin.h>
 #include <iomanip>
-#include <openssl/md5.h>
+// #include <openssl/md5.h>
 #include <boost/serialization/base_object.hpp>
 #include <boost/serialization/string.hpp>
 #include <boost/archive/text_iarchive.hpp>
@@ -43,6 +43,9 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
     mSensor(sensor), mpViewer(static_cast<Viewer*>(NULL)), mbReset(false), mbResetActiveMap(false),
     mbActivateLocalizationMode(false), mbDeactivateLocalizationMode(false), mbShutDown(false)
 {
+    LOG_ERROR("==========================================================================================");
+    LOG_ERROR("Test VSLAM debug info for android");
+    LOG_ERROR("==========================================================================================");
     // Output welcome message
     cout << endl <<
     "ORB-SLAM3 Copyright (C) 2017-2020 Carlos Campos, Richard Elvira, Juan J. Gómez, José M.M. Montiel and Juan D. Tardós, University of Zaragoza." << endl <<
@@ -230,7 +233,7 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
     //if(false) // TODO
     {
         mpViewer = new Viewer(this, mpFrameDrawer,mpMapDrawer,mpTracker,strSettingsFile,settings_);
-        mptViewer = new thread(&Viewer::Run, mpViewer);
+        // mptViewer = new thread(&Viewer::Run, mpViewer);
         mpTracker->SetViewer(mpViewer);
         mpLoopCloser->mpViewer = mpViewer;
         mpViewer->both = mpFrameDrawer->both;
@@ -1412,7 +1415,8 @@ void System::SaveAtlas(int type){
         pathSaveFileName = pathSaveFileName.append(mStrSaveAtlasToFile);
         pathSaveFileName = pathSaveFileName.append(".osa");
 
-        string strVocabularyChecksum = CalculateCheckSum(mStrVocabularyFilePath,TEXT_FILE);
+        // string strVocabularyChecksum = CalculateCheckSum(mStrVocabularyFilePath,TEXT_FILE);
+        string strVocabularyChecksum = "";
         std::size_t found = mStrVocabularyFilePath.find_last_of("/\\");
         string strVocabularyName = mStrVocabularyFilePath.substr(found+1);
 
@@ -1487,14 +1491,14 @@ bool System::LoadAtlas(int type)
     if(isRead)
     {
         //Check if the vocabulary is the same
-        string strInputVocabularyChecksum = CalculateCheckSum(mStrVocabularyFilePath,TEXT_FILE);
+        // string strInputVocabularyChecksum = CalculateCheckSum(mStrVocabularyFilePath,TEXT_FILE);
 
-        if(strInputVocabularyChecksum.compare(strVocChecksum) != 0)
-        {
-            cout << "The vocabulary load isn't the same which the load session was created " << endl;
-            cout << "-Vocabulary name: " << strFileVoc << endl;
-            return false; // Both are differents
-        }
+        // if(strInputVocabularyChecksum.compare(strVocChecksum) != 0)
+        // {
+        //     cout << "The vocabulary load isn't the same which the load session was created " << endl;
+        //     cout << "-Vocabulary name: " << strFileVoc << endl;
+        //     return false; // Both are differents
+        // }
 
         mpAtlas->SetKeyFrameDababase(mpKeyFrameDatabase);
         mpAtlas->SetORBVocabulary(mpVocabulary);
@@ -1505,45 +1509,45 @@ bool System::LoadAtlas(int type)
     return false;
 }
 
-string System::CalculateCheckSum(string filename, int type)
-{
-    string checksum = "";
+// string System::CalculateCheckSum(string filename, int type)
+// {
+//     string checksum = "";
 
-    unsigned char c[MD5_DIGEST_LENGTH];
+//     unsigned char c[MD5_DIGEST_LENGTH];
 
-    std::ios_base::openmode flags = std::ios::in;
-    if(type == BINARY_FILE) // Binary file
-        flags = std::ios::in | std::ios::binary;
+//     std::ios_base::openmode flags = std::ios::in;
+//     if(type == BINARY_FILE) // Binary file
+//         flags = std::ios::in | std::ios::binary;
 
-    ifstream f(filename.c_str(), flags);
-    if ( !f.is_open() )
-    {
-        cout << "[E] Unable to open the in file " << filename << " for Md5 hash." << endl;
-        return checksum;
-    }
+//     ifstream f(filename.c_str(), flags);
+//     if ( !f.is_open() )
+//     {
+//         cout << "[E] Unable to open the in file " << filename << " for Md5 hash." << endl;
+//         return checksum;
+//     }
 
-    MD5_CTX md5Context;
-    char buffer[1024];
+//     MD5_CTX md5Context;
+//     char buffer[1024];
 
-    MD5_Init (&md5Context);
-    while ( int count = f.readsome(buffer, sizeof(buffer)))
-    {
-        MD5_Update(&md5Context, buffer, count);
-    }
+//     MD5_Init (&md5Context);
+//     while ( int count = f.readsome(buffer, sizeof(buffer)))
+//     {
+//         MD5_Update(&md5Context, buffer, count);
+//     }
 
-    f.close();
+//     f.close();
 
-    MD5_Final(c, &md5Context );
+//     MD5_Final(c, &md5Context );
 
-    for(int i = 0; i < MD5_DIGEST_LENGTH; i++)
-    {
-        char aux[10];
-        sprintf(aux,"%02x", c[i]);
-        checksum = checksum + aux;
-    }
+//     for(int i = 0; i < MD5_DIGEST_LENGTH; i++)
+//     {
+//         char aux[10];
+//         sprintf(aux,"%02x", c[i]);
+//         checksum = checksum + aux;
+//     }
 
-    return checksum;
-}
+//     return checksum;
+// }
 
 } //namespace ORB_SLAM
 

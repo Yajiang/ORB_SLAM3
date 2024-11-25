@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.12)
 project(ORB_SLAM3)
 
 IF(NOT CMAKE_BUILD_TYPE)
@@ -9,8 +9,8 @@ MESSAGE("Build type: " ${CMAKE_BUILD_TYPE})
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}  -Wall   -O3")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall   -O3")
-set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -march=native")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=native")
+# set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -march=native")
+# set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=native")
 
 # Check C++11 or C++0x support
 include(CheckCXXCompilerFlag)
@@ -29,17 +29,16 @@ else()
 endif()
 
 LIST(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_modules)
+LIST(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 find_package(OpenCV 4.4)
-   if(NOT OpenCV_FOUND)
-      message(FATAL_ERROR "OpenCV > 4.4 not found.")
-   endif()
-
-MESSAGE("OPENCV VERSION:")
-MESSAGE(${OpenCV_VERSION})
+if(NOT OpenCV_FOUND)
+   message(FATAL_ERROR "OpenCV > 4.4 not found.")
+endif()
 
 find_package(Eigen3 3.1.0 REQUIRED)
-find_package(Pangolin REQUIRED)
+# find_package(Pangolin REQUIRED)
+find_package(Boost REQUIRED)
 
 include_directories(
 ${PROJECT_SOURCE_DIR}
@@ -47,7 +46,7 @@ ${PROJECT_SOURCE_DIR}/include
 ${PROJECT_SOURCE_DIR}/include/CameraModels
 ${PROJECT_SOURCE_DIR}/Thirdparty/Sophus
 ${EIGEN3_INCLUDE_DIR}
-${Pangolin_INCLUDE_DIRS}
+# ${Pangolin_INCLUDE_DIRS}
 )
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
@@ -117,27 +116,37 @@ add_subdirectory(Thirdparty/g2o)
 target_link_libraries(${PROJECT_NAME}
 ${OpenCV_LIBS}
 ${EIGEN3_LIBS}
-${Pangolin_LIBRARIES}
+# ${Pangolin_LIBRARIES}
 ${PROJECT_SOURCE_DIR}/Thirdparty/DBoW2/lib/libDBoW2.so
 ${PROJECT_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o.so
--lboost_serialization
--lcrypto
+# -lcrypto
 )
 
+# Check if we are building for the Android platform
+if(ANDROID)
+    message(STATUS "Building for Android platform")
+    # Find the Android log library
+    find_library(log-lib log)
+    # Link the Android log library to your target
+    target_link_libraries(
+      ${PROJECT_NAME}
+      ${log-lib})
+else()
+    message(STATUS "Building for a non-Android platform")
+endif()
 # Build examples
 # # RGB-D examples
 # set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/RGB-D)
-file(GLOB_RECURSE SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/Examples/Revopoint/*)
-add_executable(revopoint ${SOURCES})
-target_link_libraries(revopoint ${PROJECT_NAME}
-${OpenCV_LIBS}
-${EIGEN3_LIBS}
-${Pangolin_LIBRARIES}
-${PROJECT_SOURCE_DIR}/Thirdparty/DBoW2/lib/libDBoW2.so
-${PROJECT_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o.so
--lboost_serialization
--lcrypto)
-target_include_directories(revopoint PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Examples")
+# file(GLOB_RECURSE SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/Examples/Revopoint/*)
+# add_executable(revopoint ${SOURCES})
+# target_link_libraries(revopoint ${PROJECT_NAME}
+# ${OpenCV_LIBS}
+# ${EIGEN3_LIBS}
+# # ${Pangolin_LIBRARIES}
+# ${PROJECT_SOURCE_DIR}/Thirdparty/DBoW2/lib/libDBoW2.so
+# ${PROJECT_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o.so
+# -lcrypto)
+# target_include_directories(revopoint PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Examples")
 
 # # RGB-D inertial examples
 # set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/RGB-D-Inertial)
@@ -149,15 +158,15 @@ target_include_directories(revopoint PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Exampl
 # endif()
 
 #Stereo examples
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/Stereo)
+# set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/Stereo)
 
 # add_executable(stereo_kitti
 #         Examples/Stereo/stereo_kitti.cc)
 # target_link_libraries(stereo_kitti ${PROJECT_NAME})
 
-add_executable(stereo_euroc
-        Examples/Stereo/stereo_euroc.cc)
-target_link_libraries(stereo_euroc ${PROJECT_NAME})
+# add_executable(stereo_euroc
+#         Examples/Stereo/stereo_euroc.cc)
+# target_link_libraries(stereo_euroc ${PROJECT_NAME})
 
 # add_executable(stereo_tum_vi
 #         Examples/Stereo/stereo_tum_vi.cc)

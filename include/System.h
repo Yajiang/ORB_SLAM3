@@ -15,7 +15,20 @@
 * You should have received a copy of the GNU General Public License along with ORB-SLAM3.
 * If not, see <http://www.gnu.org/licenses/>.
 */
+#ifdef __ANDROID__ // This macro is defined when building for Android
+#include <android/log.h>
 
+#define LOG_TAG "MyApp" // Define your log tag for Android
+
+// Macro for logging (to make it easier to use)
+#define LOG_DEBUG(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
+#define LOG_ERROR(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
+
+#else
+// Define dummy macros for non-Android platforms to avoid compilation errors
+#define LOG_DEBUG(...) do {} while(0)
+#define LOG_ERROR(...) do {} while(0)
+#endif
 
 #ifndef SYSTEM_H
 #define SYSTEM_H
@@ -197,7 +210,7 @@ private:
     void SaveAtlas(int type);
     bool LoadAtlas(int type);
 
-    string CalculateCheckSum(string filename, int type);
+    // string CalculateCheckSum(string filename, int type);
 
     // Input sensor
     eSensor mSensor;

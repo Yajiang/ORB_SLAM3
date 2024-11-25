@@ -449,7 +449,7 @@ class SE3 : public SE3Base<SE3<Scalar_, Options>> {
 
   /// Copy constructor
   ///
-  SOPHUS_FUNC SE3(SE3 const& other) = default;
+  // SOPHUS_FUNC SE3(SE3 const& other) = default;
 
   /// Copy-like constructor from OtherDerived.
   ///
