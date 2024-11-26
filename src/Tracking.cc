@@ -615,8 +615,8 @@ void Tracking::newParameterLoader(Settings *settings) {
         mpIniORBextractor = new ORBextractor(5*nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
 
     if(mSensor==System::CAMERA_RIG || mSensor==System::IMU_CAMERA_RIG){
-        mpORBextractorSideLeft = new ORBextractor(nFeatures*2,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
-        mpORBextractorSideRight = new ORBextractor(nFeatures*2,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
+        mpORBextractorSideLeft = new ORBextractor(nFeatures*4,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
+        mpORBextractorSideRight = new ORBextractor(nFeatures*4,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
     }
 
     //IMU parameters

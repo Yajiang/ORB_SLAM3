@@ -37,7 +37,8 @@
             "args": [
                 "/home/yajiang/Revopoint/projects/ORB_SLAM3/Vocabulary/ORBvoc.txt",
                 "/home/yajiang/Revopoint/projects/ORB_SLAM3/Examples/RevopointMulti/revopoint_multi.yaml",
-                "/home/yajiang/Revopoint/data/indoor/000007/"
+                // "/home/yajiang/Revopoint/data/indoor/000007/"
+                "/home/yajiang/Revopoint/data/textureless/000001/"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
