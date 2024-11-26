@@ -353,7 +353,7 @@ namespace ORB_SLAM3 {
         else{
             // cv::Mat cvTrl = readParameter<cv::Mat>(fSettings,"Stereo.T_c1_c2",found);
             // cv::Mat cvTlr = cvTrl.inv();
-            cv::Mat cvTlr = readParameter<cv::Mat>(fSettings,"Stereo.T_c1_c2",found);
+            cv::Mat cvTrl = readParameter<cv::Mat>(fSettings,"Stereo.T_c1_c2",found);
 
             // for stereo fisheye clip mode
             // Create a rotation matrix around the Y-axis by 45 degrees
@@ -366,16 +366,37 @@ namespace ORB_SLAM3 {
                  -sin(angle), 0, cos(angle), 0, 
                  0, 0, 0, 1);
             // clang-format on
-            cvTlr = rotationY * cvTlr * rotationY;
-            std::cout << cvTlr << std::endl;
+            cvTrl = rotationY * cvTrl * rotationY;
+            std::cout << cvTrl << std::endl;
 
             // Tlr_ = Converter::toSophus(cvTlr); // test1
-            Tlr_ = Converter::toSophus(cvTlr.inv());
+            Tlr_ = Converter::toSophus(cvTrl.inv());
 
             //TODO: also search for Trl and invert if necessary
 
             b_ = Tlr_.translation().norm();
             bf_ = b_ * calibration1_->getParameter(0);
+
+            float angle2 = -45.0 * CV_PI / 180.0; // Convert to radians
+            cv::Mat rotationY2 =
+                (cv::Mat_<float>(4, 4) << cos(angle2), 0, sin(angle2), 0,
+                 0, 1, 0, 0,
+                 -sin(angle2), 0, cos(angle2), 0, 
+                 0, 0, 0, 1);
+
+            cvTrl = readParameter<cv::Mat>(fSettings,"Stereo.T_c1_c2",found);
+            cv::Mat cvTlsl = rotationY2;
+            cv::Mat cvTlsr = rotationY2 * cvTrl.inv();
+
+            // calculat Tlsl, Tlsr here
+            Tlsl_ = Converter::toSophus(cvTlsl);
+            Tlsr_ = Converter::toSophus(cvTlsr);
+
+            std::cout << "cvTlsl" <<std::endl;
+            std::cout << cvTlsl << std::endl;
+
+            std::cout << "cvTlsr" <<std::endl;
+            std::cout << cvTlsr << std::endl;
         }
 
         thDepth_ = readParameter<float>(fSettings,"Stereo.ThDepth",found);
@@ -442,6 +463,32 @@ namespace ORB_SLAM3 {
 
             static_cast<KannalaBrandt8*>(calibration3_)->mvLappingArea = vOverlapping;
         }
+
+        // {
+        //     cv::Mat cvTlsl = readParameter<cv::Mat>(fSettings,"Stereo.T_c1_c3",found);
+
+        //     // for stereo fisheye clip mode
+        //     // Create a rotation matrix around the Y-axis by 45 degrees
+        //     float angle = 45.0 * CV_PI / 180.0; // Convert to radians
+        //     // float angle = 0.0 * CV_PI / 180.0; // Convert to radians
+        //     // clang-format off
+        //     cv::Mat rotationY =
+        //         (cv::Mat_<float>(4, 4) << cos(angle), 0, sin(angle), 0,
+        //          0, 1, 0, 0,
+        //          -sin(angle), 0, cos(angle), 0, 
+        //          0, 0, 0, 1);
+        //     // clang-format on
+        //     cvTslr = rotationY * cvTslr * rotationY;
+        //     std::cout << cvTlr << std::endl;
+
+        //     // Tlr_ = Converter::toSophus(cvTlr); // test1
+        //     Tlr_ = Converter::toSophus(cvTlr.inv());
+
+        //     //TODO: also search for Trl and invert if necessary
+
+        //     b_ = Tlr_.translation().norm();
+        //     bf_ = b_ * calibration1_->getParameter(0);
+        // }
 
         thDepth_ = readParameter<float>(fSettings,"Stereo.ThDepth",found);
     }

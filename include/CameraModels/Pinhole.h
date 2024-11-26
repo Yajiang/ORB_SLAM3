@@ -89,6 +89,7 @@ namespace ORB_SLAM3 {
         friend std::istream& operator>>(std::istream& os, Pinhole& ph);
 
         bool IsEqual(GeometricCamera* pCam);
+        void computeCameraBounds(); 
     private:
         //Parameters vector corresponds to
         //      [fx, fy, cx, cy]

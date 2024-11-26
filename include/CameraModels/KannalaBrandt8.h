@@ -44,10 +44,13 @@ namespace ORB_SLAM3 {
             mnId=nNextId++;
             mnType = CAM_FISHEYE;
         }
+
+
         KannalaBrandt8(const std::vector<float> _vParameters) : GeometricCamera(_vParameters), precision(1e-6), mvLappingArea(2,0) ,tvr(nullptr) {
             assert(mvParameters.size() == 8);
             mnId=nNextId++;
             mnType = CAM_FISHEYE;
+            computeCameraBounds();
         }
 
         KannalaBrandt8(const std::vector<float> _vParameters, const float _precision) : GeometricCamera(_vParameters),
@@ -55,11 +58,13 @@ namespace ORB_SLAM3 {
             assert(mvParameters.size() == 8);
             mnId=nNextId++;
             mnType = CAM_FISHEYE;
+            computeCameraBounds();
         }
         KannalaBrandt8(KannalaBrandt8* pKannala) : GeometricCamera(pKannala->mvParameters), precision(pKannala->precision), mvLappingArea(2,0) ,tvr(nullptr) {
             assert(mvParameters.size() == 8);
             mnId=nNextId++;
             mnType = CAM_FISHEYE;
+            computeCameraBounds();
         }
 
         cv::Point2f project(const cv::Point3f &p3D);
@@ -98,6 +103,8 @@ namespace ORB_SLAM3 {
         float GetPrecision(){ return precision;}
 
         bool IsEqual(GeometricCamera* pCam);
+
+        void computeCameraBounds();
     private:
         const float precision;
 

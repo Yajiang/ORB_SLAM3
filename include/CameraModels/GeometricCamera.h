@@ -40,6 +40,12 @@
 #include "GeometricTools.h"
 
 namespace ORB_SLAM3 {
+#ifndef FRAME_GRID_ROWS
+#define FRAME_GRID_ROWS 48
+#endif
+#ifndef FRAME_GRID_COLS
+#define FRAME_GRID_COLS 64
+#endif
     class GeometricCamera {
 
         friend class boost::serialization::access;
@@ -87,6 +93,8 @@ namespace ORB_SLAM3 {
                                  Sophus::SE3f& Tcw1, Sophus::SE3f& Tcw2,
                                  const float sigmaLevel1, const float sigmaLevel2,
                                  Eigen::Vector3f& x3Dtriangulated) = 0;
+        
+        virtual void computeCameraBounds() = 0; 
 
         unsigned int GetId() { return mnId; }
 
@@ -97,7 +105,14 @@ namespace ORB_SLAM3 {
 
         static long unsigned int nNextId;
 
-    protected:
+        float mnMinX;
+        float mnMinY; 
+        float mnMaxX; 
+        float mnMaxY;
+        float mfGridElementWidthInv;
+        float mfGridElementHeightInv;
+
+      protected:
         std::vector<float> mvParameters;
 
         unsigned int mnId;

@@ -165,4 +165,37 @@ namespace ORB_SLAM3 {
         }
         return is_same_camera;
     }
+
+    void Pinhole::computeCameraBounds() {
+      cv::Mat mat(4, 2, CV_32F);
+      mat.at<float>(0, 0) = 0.0;
+      mat.at<float>(0, 1) = 0.0;
+      mat.at<float>(1, 0) = 2 * mvParameters[0];
+      mat.at<float>(1, 1) = 0.0;
+      mat.at<float>(2, 0) = 0.0;
+      mat.at<float>(2, 1) = 2 * mvParameters[1];
+      mat.at<float>(3, 0) = 2 * mvParameters[0];
+      mat.at<float>(3, 1) = 2 * mvParameters[1];
+      mat = mat.reshape(2);
+
+      auto K = toK();
+      std::vector<float> distCoef;
+      for (size_t i = 4; i < mvParameters.size(); i++) {
+          distCoef.push_back(mvParameters.at(i));
+      }
+      cv::Mat R = cv::Mat::eye(3, 3, CV_32F);
+      cv::undistortPoints(mat, mat, K, distCoef, R, K);
+      mat = mat.reshape(1);
+
+      // Undistort corners
+      mnMinX = std::min(mat.at<float>(0, 0), mat.at<float>(2, 0));
+      mnMaxX = std::max(mat.at<float>(1, 0), mat.at<float>(3, 0));
+      mnMinY = std::min(mat.at<float>(0, 1), mat.at<float>(1, 1));
+      mnMaxY = std::max(mat.at<float>(2, 1), mat.at<float>(3, 1));
+
+      mfGridElementWidthInv =
+          static_cast<float>(FRAME_GRID_COLS) / (mnMaxX - mnMinX);
+      mfGridElementHeightInv =
+          static_cast<float>(FRAME_GRID_ROWS) / (mnMaxY - mnMinY);
+    }
 }

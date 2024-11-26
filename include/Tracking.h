@@ -169,7 +169,7 @@ public:
     void Reset(bool bLocMap = false);
     void ResetActiveMap(bool bLocMap = false);
 
-    bool mbleft{true}, mbright{true}, mbsideleft{true}, mbsideright{true};
+    bool mbleft{true}, mbright{true}, mbsideleft{true}, mbsideright{false};
 
     float mMeanTrack;
     bool mbInitWith3KFs;

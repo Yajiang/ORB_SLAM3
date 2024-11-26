@@ -126,6 +126,8 @@ public:
     // Compute the cell of a keypoint (return false if outside the grid)
     bool PosInGrid(const cv::KeyPoint &kp, int &posX, int &posY);
 
+    bool PosInGrid(const cv::KeyPoint &kp, int &posX, int &posY, const int selectedCamera = 0);
+
     // change boolean to int for support multiple cameras
     vector<size_t> GetFeaturesInArea(const float &x, const float  &y, const float  &r, const int minLevel=-1, const int maxLevel=-1, const int selectedCamera = 0) const;
 

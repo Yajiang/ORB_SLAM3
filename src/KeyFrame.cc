@@ -758,21 +758,51 @@ vector<size_t> KeyFrame::GetFeaturesInArea(const float &x, const float &y, const
     float factorX = r;
     float factorY = r;
 
-    const int nMinCellX = max(0,(int)floor((x-mnMinX-factorX)*mfGridElementWidthInv));
-    if(nMinCellX>=mnGridCols)
-        return vIndices;
+    int nMinCellX;
+    int nMaxCellX;
+    int nMinCellY;
+    int nMaxCellY;
 
-    const int nMaxCellX = min((int)mnGridCols-1,(int)ceil((x-mnMinX+factorX)*mfGridElementWidthInv));
-    if(nMaxCellX<0)
-        return vIndices;
+    if(cameraID == 0 || cameraID == 1)
+    {
+        nMinCellX = max(0,(int)floor((x-mnMinX-factorX)*mfGridElementWidthInv));
+        if(nMinCellX>=mnGridCols)
+            return vIndices;
 
-    const int nMinCellY = max(0,(int)floor((y-mnMinY-factorY)*mfGridElementHeightInv));
-    if(nMinCellY>=mnGridRows)
-        return vIndices;
+        nMaxCellX = min((int)mnGridCols-1,(int)ceil((x-mnMinX+factorX)*mfGridElementWidthInv));
+        if(nMaxCellX<0)
+            return vIndices;
 
-    const int nMaxCellY = min((int)mnGridRows-1,(int)ceil((y-mnMinY+factorY)*mfGridElementHeightInv));
-    if(nMaxCellY<0)
-        return vIndices;
+        nMinCellY = max(0,(int)floor((y-mnMinY-factorY)*mfGridElementHeightInv));
+        if(nMinCellY>=mnGridRows)
+            return vIndices;
+
+        nMaxCellY = min((int)mnGridRows-1,(int)ceil((y-mnMinY+factorY)*mfGridElementHeightInv));
+        if(nMaxCellY<0)
+            return vIndices;
+    }
+    else
+    {
+        GeometricCamera * curCamera;
+        if(cameraID == 2)  curCamera = mpCamera3;
+        if(cameraID == 3)  curCamera = mpCamera4;
+        nMinCellX = max(0,(int)floor((x- curCamera->mnMinX-factorX)*(curCamera->mfGridElementWidthInv)));
+        if(nMinCellX>=mnGridCols)
+            return vIndices;
+
+        nMaxCellX = min((int)mnGridCols-1,(int)ceil((x-curCamera->mnMinX+factorX)*(curCamera->mfGridElementWidthInv)));
+        if(nMaxCellX<0)
+            return vIndices;
+
+        nMinCellY = max(0,(int)floor((y- curCamera->mnMinY-factorY)*(curCamera->mfGridElementHeightInv) ));
+        if(nMinCellY>=mnGridRows)
+            return vIndices;
+
+        nMaxCellY = min((int)mnGridRows-1,(int)ceil((y-curCamera->mnMinY+factorY)*(curCamera->mfGridElementHeightInv)));
+        if(nMaxCellY<0)
+            return vIndices;
+    }
+
 
     for(int ix = nMinCellX; ix<=nMaxCellX; ix++)
     {

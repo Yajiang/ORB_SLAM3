@@ -42,6 +42,7 @@ long unsigned int Frame::nNextId=0;
 bool Frame::mbInitialComputations=true;
 float Frame::cx, Frame::cy, Frame::fx, Frame::fy, Frame::invfx, Frame::invfy;
 float Frame::mnMinX, Frame::mnMinY, Frame::mnMaxX, Frame::mnMaxY;
+// std::vector<float> Frame::mnMinX, Frame::mnMinY, Frame::mnMaxX, Frame::mnMaxY;
 float Frame::mfGridElementWidthInv, Frame::mfGridElementHeightInv;
 
 //For stereo fisheye matching
@@ -60,7 +61,7 @@ Frame::Frame(): mpcpi(NULL), mpImuPreintegrated(NULL), mpPrevFrame(NULL), mpImuP
 Frame::Frame(const Frame &frame)
     :mpcpi(frame.mpcpi),mpORBvocabulary(frame.mpORBvocabulary), mpORBextractorLeft(frame.mpORBextractorLeft), mpORBextractorRight(frame.mpORBextractorRight),
      mpORBextractorSideLeft(frame.mpORBextractorSideLeft), mpORBextractorSideRight(frame.mpORBextractorSideRight),
-     mbEnableLeft(true), mbEnableRight(true), mbEnableSideLeft(true), mbEnableSideRight(true),
+     mbEnableLeft(true), mbEnableRight(true), mbEnableSideLeft(true), mbEnableSideRight(false),
      mTimeStamp(frame.mTimeStamp), mK(frame.mK.clone()), mK_(Converter::toMatrix3f(frame.mK)), mDistCoef(frame.mDistCoef.clone()),
      mbf(frame.mbf), mb(frame.mb), mThDepth(frame.mThDepth), N(frame.N), mvKeys(frame.mvKeys),
      mvKeysRight(frame.mvKeysRight), mvKeysSideLeft(frame.mvKeysSideLeft), mvKeysSideRight(frame.mvKeysSideRight), mvKeysUn(frame.mvKeysUn), mvuRight(frame.mvuRight),
@@ -459,9 +460,14 @@ void Frame::AssignFeaturesToGrid()
                                                                  : (i < rightBoundary) ? mvKeysRight[i - Nleft]
                                                                                          : (i < sideLeftBoundary) ? mvKeysSideLeft[i - rightBoundary]
                                                                                                                     : mvKeysSideRight[i - sideLeftBoundary];
+        size_t camId = (Nleft == -1)            ? 0
+                       : (i < Nleft)            ? 0
+                       : (i < rightBoundary)    ? 1
+                       : (i < sideLeftBoundary) ? 2
+                                                : 3;
 
         int nGridPosX, nGridPosY;
-        if(PosInGrid(kp,nGridPosX,nGridPosY)){
+        if(PosInGrid(kp,nGridPosX,nGridPosY,camId)){
             if(Nleft == -1 || i < Nleft){
                 mGrid[nGridPosX][nGridPosY].push_back(i);
             }else if (i < rightBoundary){
@@ -818,29 +824,70 @@ vector<size_t> Frame::GetFeaturesInArea(const float &x, const float  &y, const f
 
     float factorX = r;
     float factorY = r;
+    int nMinCellX;
+    int nMaxCellX;
+    int nMinCellY;
+    int nMaxCellY;
 
-    const int nMinCellX = max(0,(int)floor((x-mnMinX-factorX)*mfGridElementWidthInv));
-    if(nMinCellX>=FRAME_GRID_COLS)
-    {
+    if (selectedCamera == 0 || selectedCamera == 1) {
+      nMinCellX =
+          max(0, (int)floor((x - mnMinX - factorX) * mfGridElementWidthInv));
+      if (nMinCellX >= FRAME_GRID_COLS) {
         return vIndices;
-    }
+      }
 
-    const int nMaxCellX = min((int)FRAME_GRID_COLS-1,(int)ceil((x-mnMinX+factorX)*mfGridElementWidthInv));
-    if(nMaxCellX<0)
-    {
+      nMaxCellX =
+          min((int)FRAME_GRID_COLS - 1,
+              (int)ceil((x - mnMinX + factorX) * mfGridElementWidthInv));
+      if (nMaxCellX < 0) {
         return vIndices;
-    }
+      }
 
-    const int nMinCellY = max(0,(int)floor((y-mnMinY-factorY)*mfGridElementHeightInv));
-    if(nMinCellY>=FRAME_GRID_ROWS)
-    {
+      nMinCellY =
+          max(0, (int)floor((y - mnMinY - factorY) * mfGridElementHeightInv));
+      if (nMinCellY >= FRAME_GRID_ROWS) {
         return vIndices;
-    }
+      }
 
-    const int nMaxCellY = min((int)FRAME_GRID_ROWS-1,(int)ceil((y-mnMinY+factorY)*mfGridElementHeightInv));
-    if(nMaxCellY<0)
-    {
+      nMaxCellY =
+          min((int)FRAME_GRID_ROWS - 1,
+              (int)ceil((y - mnMinY + factorY) * mfGridElementHeightInv));
+      if (nMaxCellY < 0) {
         return vIndices;
+      }
+    } else {
+      GeometricCamera *curCamera;
+      if (selectedCamera == 2) {
+        curCamera = mpCamera3;
+      } 
+      if (selectedCamera == 3) {
+        curCamera = mpCamera4;
+      }
+      nMinCellX = max(0, (int)floor((x - curCamera->mnMinX - factorX) *
+                                    curCamera->mfGridElementWidthInv));
+      if (nMinCellX >= FRAME_GRID_COLS) {
+        return vIndices;
+      }
+
+      nMaxCellX = min((int)FRAME_GRID_COLS - 1,
+                      (int)ceil((x - curCamera->mnMinX + factorX) *
+                                curCamera->mfGridElementWidthInv));
+      if (nMaxCellX < 0) {
+        return vIndices;
+      }
+
+      nMinCellY = max(0, (int)floor((y - curCamera->mnMinY - factorY) *
+                                    curCamera->mfGridElementHeightInv));
+      if (nMinCellY >= FRAME_GRID_ROWS) {
+        return vIndices;
+      }
+
+      nMaxCellY = min((int)FRAME_GRID_ROWS - 1,
+                      (int)ceil((y - curCamera->mnMinY + factorY) *
+                                curCamera->mfGridElementHeightInv));
+      if (nMaxCellY < 0) {
+        return vIndices;
+      }
     }
 
     const bool bCheckLevels = (minLevel>0) || (maxLevel>=0);
@@ -902,6 +949,40 @@ bool Frame::PosInGrid(const cv::KeyPoint &kp, int &posX, int &posY)
     return true;
 }
 
+bool Frame::PosInGrid(const cv::KeyPoint &kp, int &posX, int &posY,
+               const int selectedCamera) {
+    
+    if (selectedCamera == 0 || selectedCamera == 1) {
+      posX = round((kp.pt.x - mnMinX) * mfGridElementWidthInv);
+      posY = round((kp.pt.y - mnMinY) * mfGridElementHeightInv);
+
+      // Keypoint's coordinates are undistorted, which could cause to go out of
+      // the image
+      if (posX < 0 || posX >= FRAME_GRID_COLS || posY < 0 ||
+          posY >= FRAME_GRID_ROWS)
+        return false;
+
+      return true;
+    }
+    else
+    {
+        GeometricCamera* curCamera;
+        if(selectedCamera == 2)
+        curCamera = mpCamera3;
+        if(selectedCamera == 3)
+        curCamera = mpCamera4;
+        posX = round((kp.pt.x - curCamera->mnMinX) * curCamera->mfGridElementWidthInv);
+        posY = round((kp.pt.y - curCamera->mnMinY) * curCamera->mfGridElementHeightInv);
+
+        // Keypoint's coordinates are undistorted, which could cause to go out of
+        // the image
+        if (posX < 0 || posX >= FRAME_GRID_COLS || posY < 0 ||
+            posY >= FRAME_GRID_ROWS)
+            return false;
+
+        return true;
+    }
+}
 
 void Frame::ComputeBoW()
 {
@@ -1469,10 +1550,32 @@ bool Frame::isInFrustumChecks(MapPoint *pMP, float viewingCosLimit, int selected
         break;
     }
 
-    if(uv(0)<mnMinX || uv(0)>mnMaxX)
+    switch (selectedCamera) {
+    case 0: {
+      if (uv(0) < mnMinX || uv(0) > mnMaxX)
         return false;
-    if(uv(1)<mnMinY || uv(1)>mnMaxY)
+      if (uv(1) < mnMinY || uv(1) > mnMaxY)
         return false;
+    };
+    case 1: {
+      if (uv(0) < mnMinX || uv(0) > mnMaxX)
+        return false;
+      if (uv(1) < mnMinY || uv(1) > mnMaxY)
+        return false;
+    };
+    case 2: {
+      if (uv(0) < mpCamera3->mnMinX || uv(0) > mpCamera3->mnMaxX)
+        return false;
+      if (uv(1) < mpCamera3->mnMinY || uv(1) > mpCamera3->mnMaxY)
+        return false;
+    };
+    case 3: {
+      if (uv(0) < mpCamera4->mnMinX || uv(0) > mpCamera4->mnMaxX)
+        return false;
+      if (uv(1) < mpCamera4->mnMinY || uv(1) > mpCamera4->mnMaxY)
+        return false;
+    };
+    }
 
     // Check distance is in the scale invariance region of the MapPoint
     const float maxDistance = pMP->GetMaxDistanceInvariance();

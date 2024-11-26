@@ -202,8 +202,7 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
     mpLocalMapper = new LocalMapping(
         this, mpAtlas, mSensor == MONOCULAR || mSensor == IMU_MONOCULAR,
         mSensor == IMU_MONOCULAR || mSensor == IMU_STEREO ||
-            mSensor == IMU_RGBD || mSensor == CAMERA_RIG ||
-            mSensor == IMU_CAMERA_RIG,
+            mSensor == IMU_RGBD || mSensor == IMU_CAMERA_RIG,
         strSequence);
     mptLocalMapping = new thread(&ORB_SLAM3::LocalMapping::Run,mpLocalMapper);
     mpLocalMapper->mInitFr = initFr;
